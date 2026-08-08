@@ -18,7 +18,7 @@ const DEFAULT_USER: User = {
 
 // Your application PIN.
 // For a local desktop application, this can be changed here.
-const APP_PIN = '123456'
+const APP_PIN = '112233'
 
 // Persistent authentication state
 const storedUser = localStorage.getItem('dbb_user')
