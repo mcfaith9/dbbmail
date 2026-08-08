@@ -2,10 +2,19 @@
 import { computed } from 'vue'
 import DOMPurify from 'dompurify'
 import type { Message } from '@/types/mail'
-import { Mail, Clock, User, X } from '@lucide/vue'
+import { Mail, Clock, UserRound, X } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { useMailFormatting } from '@/composables/useMailFormatting'
 import MailAttachments from '@/components/mail/MailAttachments.vue'
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty'
+
+import { Spinner } from '@/components/ui/spinner'
 
 const props = defineProps<{
   activeMessage: Message | null
@@ -44,7 +53,7 @@ const sanitizedHtml = computed(() => {
         <div class="flex items-center gap-2 mb-1">
           <span
             v-if="activeMessage.path"
-            class="text-[10px] uppercase tracking-wider font-semibold bg-muted text-muted-foreground px-2 py-0.5 rounded"
+            class="text-xs uppercase tracking-wider font-semibold bg-muted text-muted-foreground px-2 py-0.5 rounded"
           >
             {{ activeMessage.path }}
           </span>
@@ -52,7 +61,7 @@ const sanitizedHtml = computed(() => {
             UID: {{ activeMessage.uid }}
           </span>
         </div>
-        <h2 class="text-lg font-bold text-foreground leading-snug">
+        <h2 class="text-md font-bold text-foreground leading-snug">
           {{ activeMessage.subject || '(No Subject)' }}
         </h2>
       </div>
@@ -65,7 +74,7 @@ const sanitizedHtml = computed(() => {
     <!-- Sender & Receiver Meta -->
     <div class="py-4 border-b flex flex-col gap-1 text-xs text-muted-foreground">
       <div class="flex items-center gap-2 text-foreground font-medium text-sm">
-        <User class="h-4 w-4 text-primary" />
+        <UserRound class="h-4 w-4 text-primary" />
         <span>{{ formatSender(activeMessage.from) }}</span>
         <span class="text-xs font-normal text-muted-foreground">
           {{ formatSenderAddress(activeMessage.from) }}
@@ -90,12 +99,22 @@ const sanitizedHtml = computed(() => {
       class="py-4 flex-1 min-h-0 overflow-y-auto text-sm text-foreground font-sans"
     >
       <!-- Loading -->
-      <div
+      <Empty
         v-if="activeMessage?.contentLoading"
-        class="flex items-center justify-center py-10 text-muted-foreground"
+        class="flex-1"
       >
-        Loading message...
-      </div>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <Spinner />
+          </EmptyMedia>
+
+          <EmptyTitle>Loading message</EmptyTitle>
+
+          <EmptyDescription>
+            Please wait while we load the email content.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
 
       <!-- Error -->
       <div
@@ -149,7 +168,7 @@ const sanitizedHtml = computed(() => {
   <!-- Placeholder when no message selected -->
   <div
     v-else
-    class="hidden md:flex flex-1 flex-col items-center justify-center p-8 text-sm text-muted-foreground bg-muted/10"
+    class="hidden md:flex w-[240px] shrink-0 flex-col items-center justify-center p-8 text-sm text-muted-foreground bg-muted/10"
   >
     <Mail class="h-10 w-10 mb-2 text-muted-foreground/30" />
     <p class="font-medium text-foreground">Select an email message</p>

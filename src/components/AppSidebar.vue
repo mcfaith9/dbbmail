@@ -308,7 +308,7 @@ onMounted(() => {
             >
               <Mail class="size-4 shrink-0" />
 
-              <span class="truncate text-sm">
+              <span class="truncate text-xs">
                 {{ mail.email }}
               </span>
             </a>

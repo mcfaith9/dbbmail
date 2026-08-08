@@ -117,14 +117,11 @@ function closeDetail() {
           ]"
         >
           <Table>
-            <TableHeader class="sticky top-0 z-10 bg-background">
+            <TableHeader class="sticky top-0 z-10 bg-background dark:bg-neutral-800">
               <TableRow>
                 <TableHead class="w-[36px] px-2 text-center"></TableHead>
                 <TableHead class="w-[160px]">Sender</TableHead>
                 <TableHead>Subject</TableHead>
-                <TableHead class="w-[40px] text-center px-1">
-                  <Paperclip class="h-3.5 w-3.5 mx-auto text-muted-foreground" />
-                </TableHead>
                 <TableHead class="w-[130px] text-right">Date</TableHead>
               </TableRow>
             </TableHeader>
