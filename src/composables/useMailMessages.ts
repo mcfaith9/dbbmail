@@ -100,8 +100,12 @@ export function useMailMessages() {
     }
   }
 
-  function handleMessageSelected(msg: Message | null) {
+  async function handleMessageSelected(msg: Message | null) {
     activeMessage.value = msg
+
+    if (msg) {
+      await fetchMessageContent(msg)
+    }
   }
 
   function handlePageChange(newPage: number) {
@@ -122,6 +126,102 @@ export function useMailMessages() {
     fetchMessages(selectedMailboxResourceId.value, pagination.value.page, pagination.value.perPage)
   }
 
+  const messageContentCache = new Map<
+    string,
+    {
+      text?: string
+      html?: string
+    }
+  >()
+
+  async function fetchMessageContent(message: Message) {
+    if (!message) return
+
+    const mailboxResourceId =
+      selectedMailboxResourceId.value
+
+    const folder =
+      (activeFolder.value || 'INBOX').toUpperCase()
+
+    const uid = Number(message.uid)
+
+    if (
+      !mailboxResourceId ||
+      !Number.isFinite(uid) ||
+      uid <= 0
+    ) {
+      console.warn('Invalid message information:', {
+        mailboxResourceId,
+        folder,
+        uid: message.uid,
+      })
+
+      return
+    }
+
+    const cacheKey =
+      `${mailboxResourceId}_${folder}_${uid}`
+
+    const cached = messageContentCache.get(cacheKey)
+
+    if (cached) {
+      message.text = cached.text
+      message.html = cached.html
+      message.contentLoading = false
+      message.contentError = null
+
+      return
+    }
+
+    message.contentLoading = true
+    message.contentError = null
+
+    try {
+      console.log('Fetching message content:', {
+        mailboxResourceId,
+        folder,
+        uid,
+      })
+
+      const response =
+        await window.hostinger.getMessageContent(
+          mailboxResourceId,
+          folder,
+          uid
+        )
+
+      const text =
+        response?.data?.text ??
+        response?.text ??
+        ''
+
+      const html =
+        response?.data?.html ??
+        response?.html ??
+        ''
+
+      message.text = text
+      message.html = html
+
+      messageContentCache.set(cacheKey, {
+        text,
+        html,
+      })
+    } catch (error: unknown) {
+      console.error(
+        'Failed to fetch message content:',
+        error
+      )
+
+      message.contentError =
+        error instanceof Error
+          ? error.message
+          : 'Failed to load email message content.'
+    } finally {
+      message.contentLoading = false
+    }
+  }
+
   return {
     selectedMailbox,
     selectedMailboxResourceId,
@@ -138,5 +238,6 @@ export function useMailMessages() {
     handlePageChange,
     handlePerPageChange,
     handleRefresh,
+    fetchMessageContent
   }
 }

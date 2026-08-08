@@ -29,11 +29,27 @@ contextBridge.exposeInMainWorld('hostinger', {
 
   getMailboxMessages: (
     mailboxResourceId: string,
-    folder: string
+    folder: string,
+    page: number = 1,
+    perPage: number = 10
   ) =>
     ipcRenderer.invoke(
       'hostinger:userinbox',
       mailboxResourceId,
-      folder
+      folder,
+      page,
+      perPage
+    ),
+
+  getMessageContent: (
+    mailboxResourceId: string,
+    folder: string,
+    uid: number
+  ) =>
+    ipcRenderer.invoke(
+      'hostinger:usermessagecontent',
+      mailboxResourceId,
+      folder,
+      uid
     ),
 })

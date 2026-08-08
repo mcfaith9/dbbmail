@@ -20,7 +20,11 @@ export interface Message {
   snippet?: string
   body?: string
   attachments?: Attachment[]
-  size?: number
+  size?: number,
+  text?: string
+  html?: string
+  contentLoading?: boolean
+  contentError?: string | null
 }
 
 export interface PaginationInfo {

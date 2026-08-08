@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import DOMPurify from 'dompurify'
+import type { Message } from '@/types/mail'
 import { Mail, Clock, User, X } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
-import type { Message } from '@/types/mail'
 import { useMailFormatting } from '@/composables/useMailFormatting'
 import MailAttachments from '@/components/mail/MailAttachments.vue'
 
-defineProps<{
+const props = defineProps<{
   activeMessage: Message | null
 }>()
 
@@ -13,7 +15,21 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-const { formatDate, formatSender, formatSenderAddress } = useMailFormatting()
+const {
+  formatSender,
+  formatSenderAddress,
+  formatDate,
+} = useMailFormatting()
+
+const sanitizedHtml = computed(() => {
+  if (!props.activeMessage?.html) {
+    return ''
+  }
+
+  return DOMPurify.sanitize(
+    props.activeMessage.html
+  )
+})
 </script>
 
 <template>
@@ -69,8 +85,64 @@ const { formatDate, formatSender, formatSenderAddress } = useMailFormatting()
     />
 
     <!-- Email Content Body -->
-    <div class="py-4 flex-1 text-sm text-foreground leading-relaxed whitespace-pre-wrap font-sans">
-      {{ activeMessage.body || activeMessage.snippet || 'No plain text content for this message.' }}
+    <!-- Email Content Body -->
+    <div
+      class="py-4 flex-1 min-h-0 overflow-y-auto text-sm text-foreground font-sans"
+    >
+      <!-- Loading -->
+      <div
+        v-if="activeMessage?.contentLoading"
+        class="flex items-center justify-center py-10 text-muted-foreground"
+      >
+        Loading message...
+      </div>
+
+      <!-- Error -->
+      <div
+        v-else-if="activeMessage?.contentError"
+        class="py-10 text-center text-destructive"
+      >
+        {{ activeMessage.contentError }}
+      </div>
+
+      <!-- HTML Email -->
+      <div
+        v-else-if="sanitizedHtml"
+        class="email-content"
+        v-html="sanitizedHtml"
+      />
+
+      <!-- Plain Text -->
+      <div
+        v-else-if="activeMessage?.text"
+        class="whitespace-pre-wrap leading-relaxed"
+      >
+        {{ activeMessage.text }}
+      </div>
+
+      <!-- Existing body -->
+      <div
+        v-else-if="activeMessage?.body"
+        class="whitespace-pre-wrap leading-relaxed"
+      >
+        {{ activeMessage.body }}
+      </div>
+
+      <!-- Snippet fallback -->
+      <div
+        v-else-if="activeMessage?.snippet"
+        class="whitespace-pre-wrap leading-relaxed"
+      >
+        {{ activeMessage.snippet }}
+      </div>
+
+      <!-- Nothing -->
+      <div
+        v-else
+        class="py-10 text-center text-muted-foreground"
+      >
+        No content available for this message.
+      </div>
     </div>
   </div>
 

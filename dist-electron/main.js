@@ -12639,14 +12639,7 @@ var _eval = EvalError;
 var range = RangeError;
 var ref = ReferenceError;
 var syntax = SyntaxError;
-var type;
-var hasRequiredType;
-function requireType() {
-  if (hasRequiredType) return type;
-  hasRequiredType = 1;
-  type = TypeError;
-  return type;
-}
+var type = TypeError;
 var uri = URIError;
 var abs$1 = Math.abs;
 var floor$1 = Math.floor;
@@ -12892,7 +12885,7 @@ function requireCallBindApplyHelpers() {
   if (hasRequiredCallBindApplyHelpers) return callBindApplyHelpers;
   hasRequiredCallBindApplyHelpers = 1;
   var bind3 = functionBind;
-  var $TypeError2 = requireType();
+  var $TypeError2 = type;
   var $call2 = requireFunctionCall();
   var $actualApply = requireActualApply();
   callBindApplyHelpers = function callBindBasic(args) {
@@ -12965,7 +12958,7 @@ var $EvalError = _eval;
 var $RangeError = range;
 var $ReferenceError = ref;
 var $SyntaxError = syntax;
-var $TypeError$1 = requireType();
+var $TypeError$1 = type;
 var $URIError = uri;
 var abs = abs$1;
 var floor = floor$1;
@@ -13296,7 +13289,7 @@ var GetIntrinsic2 = getIntrinsic;
 var $defineProperty = GetIntrinsic2("%Object.defineProperty%", true);
 var hasToStringTag = requireShams()();
 var hasOwn$1 = hasown;
-var $TypeError = requireType();
+var $TypeError = type;
 var toStringTag = hasToStringTag ? Symbol.toStringTag : null;
 var esSetTostringtag = function setToStringTag(object, value) {
   var overrideIfSet = arguments.length > 2 && !!arguments[2] && arguments[2].force;
@@ -19328,34 +19321,47 @@ const {
   mergeConfig,
   create
 } = axios;
-async function getMailboxes() {
+const HOSTINGER_API_URL = "https://api.mail.hostinger.com/api/v1";
+function getToken() {
   const token = process.env.HOSTINGER_API_TOKEN;
   if (!token) {
     throw new Error("HOSTINGER_API_TOKEN is missing");
   }
+  return token;
+}
+function getHeaders() {
+  return {
+    Authorization: `Bearer ${getToken()}`,
+    Accept: "application/json"
+  };
+}
+async function getMailboxes() {
   const response = await axios.get(
-    "https://api.mail.hostinger.com/api/v1/me",
+    `${HOSTINGER_API_URL}/me`,
     {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/json"
+      headers: getHeaders()
+    }
+  );
+  return response.data;
+}
+async function getUserInbox(mailboxResourceId, folder = "INBOX", page = 1, perPage = 10) {
+  const response = await axios.get(
+    `${HOSTINGER_API_URL}/mailboxes/${mailboxResourceId}/folders/${folder}/messages`,
+    {
+      headers: getHeaders(),
+      params: {
+        page,
+        perPage
       }
     }
   );
   return response.data;
 }
-async function getUserInbox(mailboxResourceId) {
-  const token = process.env.HOSTINGER_API_TOKEN;
-  if (!token) {
-    throw new Error("HOSTINGER_API_TOKEN is missing");
-  }
+async function getUserMessageContent(mailboxResourceId, folder = "INBOX", uid) {
   const response = await axios.get(
-    `https://api.mail.hostinger.com/api/v1/mailboxes/${mailboxResourceId}/folders/INBOX/messages`,
+    `${HOSTINGER_API_URL}/mailboxes/${mailboxResourceId}/folders/${folder}/messages/${uid}/text`,
     {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/json"
-      }
+      headers: getHeaders()
     }
   );
   return response.data;
@@ -19373,9 +19379,22 @@ ipcMain.handle("hostinger:me", async () => {
 });
 ipcMain.handle(
   "hostinger:userinbox",
-  async (_event, mailboxResourceId, folder) => {
+  async (_event, mailboxResourceId, folder, page = 1, perPage = 10) => {
     return await getUserInbox(
-      mailboxResourceId
+      mailboxResourceId,
+      folder,
+      page,
+      perPage
+    );
+  }
+);
+ipcMain.handle(
+  "hostinger:usermessagecontent",
+  async (_event, mailboxResourceId, folder, uid) => {
+    return await getUserMessageContent(
+      mailboxResourceId,
+      folder,
+      uid
     );
   }
 );

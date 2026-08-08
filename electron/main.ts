@@ -4,7 +4,11 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import { getMailboxes, getUserInbox } from './services/hostinger'
+import {
+  getMailboxes,
+  getUserInbox,
+  getUserMessageContent,
+} from './services/hostinger'
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -36,10 +40,34 @@ ipcMain.handle('hostinger:me', async () => {
 
 ipcMain.handle(
   'hostinger:userinbox',
-  async (_event, mailboxResourceId: string, folder: string) => {
+  async (
+    _event,
+    mailboxResourceId: string,
+    folder: string,
+    page: number = 1,
+    perPage: number = 10
+  ) => {
     return await getUserInbox(
       mailboxResourceId,
-      folder
+      folder,
+      page,
+      perPage
+    )
+  }
+)
+
+ipcMain.handle(
+  'hostinger:usermessagecontent',
+  async (
+    _event,
+    mailboxResourceId: string,
+    folder: string,
+    uid: number
+  ) => {
+    return await getUserMessageContent(
+      mailboxResourceId,
+      folder,
+      uid
     )
   }
 )
