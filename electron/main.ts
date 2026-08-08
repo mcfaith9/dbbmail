@@ -34,9 +34,12 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 let win: BrowserWindow | null
 
 // Hostinger IPC
-ipcMain.handle('hostinger:me', async () => {
-  return await getMailboxes()
-})
+ipcMain.handle(
+  'hostinger:me',
+  async () => {
+    return await getMailboxes()
+  }
+)
 
 ipcMain.handle(
   'hostinger:userinbox',
@@ -44,14 +47,12 @@ ipcMain.handle(
     _event,
     mailboxResourceId: string,
     folder: string,
-    page: number = 1,
-    perPage: number = 10
+    hostingerAccount: 'DMBB' | 'DBB'
   ) => {
     return await getUserInbox(
       mailboxResourceId,
       folder,
-      page,
-      perPage
+      hostingerAccount
     )
   }
 )
@@ -62,12 +63,14 @@ ipcMain.handle(
     _event,
     mailboxResourceId: string,
     folder: string,
-    uid: number
+    uid: number,
+    hostingerAccount: 'DMBB' | 'DBB'
   ) => {
     return await getUserMessageContent(
       mailboxResourceId,
       folder,
-      uid
+      uid,
+      hostingerAccount
     )
   }
 )

@@ -17,6 +17,10 @@ export function useMailMessages() {
   const messagesLoading = ref(false)
   const messagesError = ref<string | null>(null)
 
+  type HostingerAccount = 'DMBB' | 'DBB'
+  const selectedHostingerAccount =
+    ref<HostingerAccount | null>(null)
+    
   async function fetchMessages(
     mailboxResourceId: string,
     page = pagination.value.page,
@@ -29,12 +33,21 @@ export function useMailMessages() {
     try {
       const folder = folderName.toUpperCase()
 
-      const response = await window.hostinger.getMailboxMessages(
-        mailboxResourceId,
-        folder,
-        page,
-        perPage
-      )
+      const hostingerAccount =
+        selectedHostingerAccount.value
+
+      if (!hostingerAccount) {
+        throw new Error(
+          'No Hostinger account selected'
+        )
+      }
+
+      const response =
+        await window.hostinger.getMailboxMessages(
+          mailboxResourceId,
+          folder,
+          hostingerAccount
+        )
 
       let list: Message[] = []
 
@@ -82,13 +95,29 @@ export function useMailMessages() {
     }
   }
 
-  async function handleMailboxSelected(email: string, mailboxResourceId: string) {
+  async function handleMailboxSelected(
+    email: string,
+    mailboxResourceId: string,
+    hostingerAccount: HostingerAccount
+  ) {
     selectedMailbox.value = email
-    selectedMailboxResourceId.value = mailboxResourceId
+
+    selectedMailboxResourceId.value =
+      mailboxResourceId
+
+    selectedHostingerAccount.value =
+      hostingerAccount
+
     activeMessage.value = null
+
     pagination.value.page = 1
 
-    await fetchMessages(mailboxResourceId, 1, pagination.value.perPage, activeFolder.value)
+    await fetchMessages(
+      mailboxResourceId,
+      1,
+      pagination.value.perPage,
+      activeFolder.value
+    )
   }
 
   function handleFolderSelected(folderTitle: string) {
@@ -134,11 +163,16 @@ export function useMailMessages() {
     }
   >()
 
-  async function fetchMessageContent(message: Message) {
+  async function fetchMessageContent(
+    message: Message
+  ) {
     if (!message) return
 
     const mailboxResourceId =
       selectedMailboxResourceId.value
+
+    const hostingerAccount =
+      selectedHostingerAccount.value
 
     const folder =
       (activeFolder.value || 'INBOX').toUpperCase()
@@ -147,22 +181,27 @@ export function useMailMessages() {
 
     if (
       !mailboxResourceId ||
-      !Number.isFinite(uid) ||
-      uid <= 0
+      !hostingerAccount ||
+      !uid
     ) {
-      console.warn('Invalid message information:', {
-        mailboxResourceId,
-        folder,
-        uid: message.uid,
-      })
+      console.warn(
+        'Cannot fetch message content:',
+        {
+          mailboxResourceId,
+          hostingerAccount,
+          folder,
+          uid,
+        }
+      )
 
       return
     }
 
     const cacheKey =
-      `${mailboxResourceId}_${folder}_${uid}`
+      `${hostingerAccount}_${mailboxResourceId}_${folder}_${uid}`
 
-    const cached = messageContentCache.get(cacheKey)
+    const cached =
+      messageContentCache.get(cacheKey)
 
     if (cached) {
       message.text = cached.text
@@ -177,17 +216,22 @@ export function useMailMessages() {
     message.contentError = null
 
     try {
-      console.log('Fetching message content:', {
-        mailboxResourceId,
-        folder,
-        uid,
-      })
+      console.log(
+        '[Mail] Fetching message content:',
+        {
+          mailboxResourceId,
+          hostingerAccount,
+          folder,
+          uid,
+        }
+      )
 
       const response =
         await window.hostinger.getMessageContent(
           mailboxResourceId,
           folder,
-          uid
+          uid,
+          hostingerAccount
         )
 
       const text =
@@ -203,20 +247,22 @@ export function useMailMessages() {
       message.text = text
       message.html = html
 
-      messageContentCache.set(cacheKey, {
-        text,
-        html,
-      })
-    } catch (error: unknown) {
+      messageContentCache.set(
+        cacheKey,
+        {
+          text,
+          html,
+        }
+      )
+    } catch (error: any) {
       console.error(
-        'Failed to fetch message content:',
+        '[Mail] Failed to fetch message content:',
         error
       )
 
       message.contentError =
-        error instanceof Error
-          ? error.message
-          : 'Failed to load email message content.'
+        error?.message ||
+        'Failed to load email message content.'
     } finally {
       message.contentLoading = false
     }

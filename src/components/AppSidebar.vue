@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import type { SidebarProps } from '@/components/ui/sidebar'
-import { ArchiveX, Command, File, Inbox, Send, Trash2, Mail } from "@lucide/vue"
-import { ref, computed, onMounted, h } from 'vue'
-import NavUser from '@/components/NavUser.vue'
-import { Label } from '@/components/ui/label'
+import { computed, h, ref, onMounted } from 'vue'
+import { Mail } from '@lucide/vue'
+
 import {
   Sidebar,
   SidebarContent,
@@ -16,169 +14,226 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
+
+import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 
-const props = withDefaults(defineProps<SidebarProps>(), {
-  collapsible: "icon",
-})
+import NavUser from '@/components/NavUser.vue'
 
-const emit = defineEmits<{
-  mailboxSelected: [
-    email: string,
-    mailboxResourceId: string
-  ]
-  folderSelected: [
-    folderTitle: string
-  ]
-}>()
+import type { Mailbox } from '@/types/mail'
 
-function selectMailbox(mail: {
-  email: string
-  mailboxResourceId: string
-}) {
-  selectedMailbox.value = mail.email
+/*
+|--------------------------------------------------------------------------
+| Navigation
+|--------------------------------------------------------------------------
+*/
 
-  emit(
-    "mailboxSelected",
-    mail.email,
-    mail.mailboxResourceId
-  )
-}
-
-function selectFolder(item: typeof data.navMain[0]) {
-  activeItem.value = item
-  setOpen(true)
-  emit("folderSelected", item.title)
-}
-
-// Search and filter state for mailboxes
-const mailboxSearchQuery = ref('')
-const showOnlyUnreads = ref(false)
-
-// This is sample data
 const data = {
-  user: {
-    name: "DBB Admin",
-    email: "admin@dbb.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   navMain: [
     {
-      title: "Inbox",
-      url: "#",
-      icon: Inbox,
-      isActive: true,
+      title: 'Inbox',
+      icon: Mail,
     },
-    {
-      title: "Drafts",
-      url: "#",
-      icon: File,
-      isActive: false,
-    },
-    {
-      title: "Sent",
-      url: "#",
-      icon: Send,
-      isActive: false,
-    },
-    {
-      title: "Junk",
-      url: "#",
-      icon: ArchiveX,
-      isActive: false,
-    },
-    {
-      title: "Trash",
-      url: "#",
-      icon: Trash2,
-      isActive: false,
-    },
+    // Your other folders...
   ],
+
+  user: {
+    name: 'Mail',
+    email: '',
+    avatar: '',
+  },
 }
+
+/*
+|--------------------------------------------------------------------------
+| Active folder
+|--------------------------------------------------------------------------
+*/
+
+const activeItem = ref(data.navMain[0])
+
+function selectFolder(item: typeof data.navMain[number]) {
+  activeItem.value = item
+
+  console.log('Selected folder:', item.title)
+}
+
+/*
+|--------------------------------------------------------------------------
+| Mailboxes
+|--------------------------------------------------------------------------
+*/
+
+const mails = ref<Mailbox[]>([])
 
 const loading = ref(false)
 const error = ref<string | null>(null)
-const selectedMailbox = ref<string | null>(null)
-const mailboxes = ref<
-  {
-    resourceId: string
-    address: string
-  }[]
->([])
 
-const mails = ref<
-  {
-    email: string
-    name: string
-    mailboxResourceId: string
-    subject: string
-    teaser: string
-    date: string
-  }[]
->([])
+const mailboxSearchQuery = ref('')
+
+const selectedMailbox = ref<string | null>(null)
+const selectedMailboxResourceId = ref<string | null>(null)
+const selectedHostingerAccount = ref<'DMBB' | 'DBB' | null>(null)
+
+/*
+|--------------------------------------------------------------------------
+| Unread filter
+|--------------------------------------------------------------------------
+*/
+
+const showOnlyUnreads = ref(false)
+
+/*
+|--------------------------------------------------------------------------
+| Filtered mailboxes
+|--------------------------------------------------------------------------
+*/
 
 const filteredMails = computed(() => {
-  let list = mails.value
-  if (mailboxSearchQuery.value.trim()) {
-    const query = mailboxSearchQuery.value.toLowerCase().trim()
-    list = list.filter(m =>
-      m.email.toLowerCase().includes(query) ||
-      m.name.toLowerCase().includes(query)
+  let result = mails.value
+
+  const query = mailboxSearchQuery.value.trim().toLowerCase()
+
+  if (query) {
+    result = result.filter((mail) =>
+      mail.address.toLowerCase().includes(query)
     )
   }
-  return list
+
+  // Keep accounts grouped together
+  return [...result].sort((a, b) => {
+    if (a.hostingerAccount === b.hostingerAccount) {
+      return a.address.localeCompare(b.address)
+    }
+
+    // DMBB first, DBB second
+    return a.hostingerAccount === 'DMBB' ? -1 : 1
+  })
 })
 
-// Currently selected first-sidebar item
-const activeItem = ref(data.navMain[0])
+/*
+|--------------------------------------------------------------------------
+| Fetch mailboxes
+|--------------------------------------------------------------------------
+*/
 
-// Open second sidebar
-const open = ref(false)
-
-function setOpen(value: boolean) {
-  open.value = value
-}
-
-async function getHostingerData() {
+async function fetchMailboxes() {
   loading.value = true
   error.value = null
 
   try {
+    console.log('[Sidebar] Fetching mailboxes...')
+
     const response = await window.hostinger.getMe()
 
-    // Get the mailboxes from Hostinger
-    mailboxes.value = response.data?.mailboxes || []
+    console.log('[Sidebar] Raw mailbox response:', response)
 
-    // Convert Hostinger mailboxes into the format
-    // your second sidebar already uses
-    mails.value = mailboxes.value.map((mailbox) => ({
-      email: mailbox.address,
-      name: mailbox.address,
-      mailboxResourceId: mailbox.resourceId,
-      subject: '',
-      teaser: '',
-      date: '',
-    }))
+    /*
+     * Your backend returns:
+     *
+     * {
+     *   data: [
+     *     {
+     *       resourceId: 'AC...',
+     *       address: 'user@example.com',
+     *       hostingerAccount: 'DMBB'
+     *     }
+     *   ]
+     * }
+     */
 
-    // Automatically select first mailbox if available
-    if (mails.value.length > 0 && !selectedMailbox.value) {
-      selectMailbox(mails.value[0])
+    if (Array.isArray(response?.data)) {
+      mails.value = response.data
+    } else if (Array.isArray(response)) {
+      mails.value = response
+    } else {
+      mails.value = []
     }
 
-    // Automatically open the second sidebar
-    if (mails.value.length > 0) {
-      setOpen(true)
-    }
+    console.log(
+      '[Sidebar] Mailboxes loaded:',
+      mails.value.length
+    )
+
+    console.log(
+      '[Sidebar] Mailboxes:',
+      mails.value
+    )
   } catch (err: any) {
-    error.value = err.message || 'Failed to load mailboxes'
-    console.error('Hostinger error:', err)
+    console.error(
+      '[Sidebar] Failed to fetch mailboxes:',
+      err
+    )
+
+    error.value =
+      err?.message ||
+      'Failed to load mailboxes.'
+
+    mails.value = []
   } finally {
     loading.value = false
   }
 }
 
+/*
+|--------------------------------------------------------------------------
+| Select mailbox
+|--------------------------------------------------------------------------
+*/
+
+function selectMailbox(mail: Mailbox) {
+  console.log(
+    '[Sidebar] Selected mailbox:',
+    mail
+  )
+
+  selectedMailbox.value = mail.address
+
+  selectedMailboxResourceId.value =
+    mail.resourceId
+
+  selectedHostingerAccount.value =
+    mail.hostingerAccount
+
+  /*
+   * This is where you connect your mailbox
+   * selection to your mail message composable.
+   *
+   * Replace this with your actual handler
+   * if it is already available in your component.
+   */
+
+  emit(
+    'mailbox-selected',
+    mail.address,
+    mail.resourceId,
+    mail.hostingerAccount
+  )
+}
+
+/*
+|--------------------------------------------------------------------------
+| Events
+|--------------------------------------------------------------------------
+*/
+
+const emit = defineEmits<{
+  (
+    e: 'mailbox-selected',
+    email: string,
+    mailboxResourceId: string,
+    hostingerAccount: 'DMBB' | 'DBB'
+  ): void
+}>()
+
+/*
+|--------------------------------------------------------------------------
+| Initial load
+|--------------------------------------------------------------------------
+*/
+
 onMounted(() => {
-  getHostingerData()
+  fetchMailboxes()
 })
 </script>
 
@@ -293,25 +348,44 @@ onMounted(() => {
             </div>
 
             <!-- Mailboxes -->
-            <a
-              v-for="mail in filteredMails"
-              :key="mail.mailboxResourceId"
-              href="#"
-              :class="[
-                'flex items-center gap-3 border-b p-3 text-sm last:border-b-0 transition-colors',
-                'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                selectedMailbox === mail.email
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                  : ''
-              ]"
-              @click.prevent="selectMailbox(mail)"
+            <template
+              v-for="(mail, index) in filteredMails"
+              :key="mail.resourceId"
             >
-              <Mail class="size-4 shrink-0" />
+              <!-- Account Separator -->
+              <div
+                v-if="
+                  index === 0 ||
+                  mail.hostingerAccount !== filteredMails[index - 1].hostingerAccount
+                "
+                class="border-t px-3 py-2 border-t-0"
+              >
+                <div
+                  class="text-md font-semibold uppercase tracking-wider text-muted-foreground"
+                >
+                  {{ mail.hostingerAccount }}
+                </div>
+              </div>
 
-              <span class="truncate text-xs">
-                {{ mail.email }}
-              </span>
-            </a>
+              <!-- Mailbox -->
+              <a
+                href="#"
+                :class="[
+                  'flex items-center gap-3 border-b p-3 text-sm last:border-b-0 transition-colors',
+                  'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                  selectedMailbox === mail.address
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                    : ''
+                ]"
+                @click.prevent="selectMailbox(mail)"
+              >
+                <Mail class="size-4 shrink-0" />
+
+                <span class="truncate text-xs">
+                  {{ mail.address }}
+                </span>
+              </a>
+            </template>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

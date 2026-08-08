@@ -36,5 +36,6 @@ export interface PaginationInfo {
 
 export interface Mailbox {
   resourceId: string
-  address: string
+  address: string,
+  hostingerAccount: 'DMBB' | 'DBB'
 }
