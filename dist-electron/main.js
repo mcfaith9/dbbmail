@@ -19321,13 +19321,29 @@ const {
   mergeConfig,
   create
 } = axios;
-async function getHostingerMe() {
+async function getMailboxes() {
   const token = process.env.HOSTINGER_API_TOKEN;
   if (!token) {
     throw new Error("HOSTINGER_API_TOKEN is missing");
   }
   const response = await axios.get(
     "https://api.mail.hostinger.com/api/v1/me",
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json"
+      }
+    }
+  );
+  return response.data;
+}
+async function getUserInbox(mailboxResourceId, folder = "INBOX") {
+  const token = process.env.HOSTINGER_API_TOKEN;
+  if (!token) {
+    throw new Error("HOSTINGER_API_TOKEN is missing");
+  }
+  const response = await axios.get(
+    `https://api.mail.hostinger.com/api/v1/mailboxes/${mailboxResourceId}/folders/INBOX/messages`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -19346,9 +19362,17 @@ const RENDERER_DIST = path$2.join(process.env.APP_ROOT, "dist");
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path$2.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
 let win;
 ipcMain.handle("hostinger:me", async () => {
-  console.log("📨 Hostinger IPC called");
-  return await getHostingerMe();
+  return await getMailboxes();
 });
+ipcMain.handle(
+  "hostinger:userinbox",
+  async (_event, mailboxResourceId, folder) => {
+    return await getUserInbox(
+      mailboxResourceId,
+      folder
+    );
+  }
+);
 function createWindow() {
   win = new BrowserWindow({
     icon: path$2.join(process.env.VITE_PUBLIC, "electron-vite.svg"),

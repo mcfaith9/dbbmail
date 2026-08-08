@@ -21,9 +21,61 @@ import {
 } from "@/components/ui/sidebar"
 
 const selectedMailbox = ref<string | null>(null)
+const selectedMailboxResourceId = ref<string | null>(null)
+const messages = ref<any[]>([])
+const messagesLoading = ref(false)
+const messagesError = ref<string | null>(null)
 
-function handleMailboxSelected(email: string) {
+async function handleMailboxSelected(
+  email: string,
+  mailboxResourceId: string
+) {
+  console.log("EMAIL:", email)
+  console.log("RESOURCE ID:", mailboxResourceId)
+
   selectedMailbox.value = email
+  selectedMailboxResourceId.value = mailboxResourceId
+
+  await fetchMessages(mailboxResourceId)
+}
+
+async function fetchMessages(
+  mailboxResourceId: string
+) {
+  messagesLoading.value = true
+  messagesError.value = null
+
+  try {
+    const folder = "INBOX"
+
+    const response =
+      await window.hostinger.getMailboxMessages(
+        mailboxResourceId,
+        folder
+      )
+
+    console.log(
+      "MESSAGES RESPONSE:",
+      response
+    )
+
+    messages.value =
+      response.data?.messages || []
+
+  } catch (err: any) {
+    console.error(
+      "MESSAGE FETCH ERROR:",
+      err
+    )
+
+    messagesError.value =
+      err.message ||
+      "Failed to load messages"
+
+    messages.value = []
+  } finally {
+    messagesLoading.value = false
+  }
 }
 </script>
 
@@ -114,13 +166,8 @@ function handleMailboxSelected(email: string) {
           <!-- Email body/content -->
           <div class="flex flex-1 items-center justify-center p-6">
             <div class="text-center">
-              <p class="text-sm font-medium">
-                {{ selectedMailbox }}
-              </p>
-
-              <p class="mt-1 text-sm text-muted-foreground">
-                Email content will appear here.
-              </p>
+              // Display list of messages here shadcdn table! 
+              // we can use file MailMessages.vue
             </div>
           </div>
 

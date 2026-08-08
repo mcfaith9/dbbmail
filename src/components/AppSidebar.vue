@@ -24,8 +24,24 @@ const props = withDefaults(defineProps<SidebarProps>(), {
 })
 
 const emit = defineEmits<{
-  mailboxSelected: [email: string]
+  mailboxSelected: [
+    email: string,
+    mailboxResourceId: string
+  ]
 }>()
+
+function selectMailbox(mail: {
+  email: string
+  mailboxResourceId: string
+}) {
+  selectedMailbox.value = mail.email
+
+  emit(
+    "mailboxSelected",
+    mail.email,
+    mail.mailboxResourceId
+  )
+}
 
 // This is sample data
 const data = {
@@ -82,6 +98,7 @@ const mails = ref<
   {
     email: string
     name: string
+    mailboxResourceId: string
     subject: string
     teaser: string
     date: string
@@ -113,6 +130,7 @@ async function getHostingerData() {
     mails.value = mailboxes.value.map((mailbox) => ({
       email: mailbox.address,
       name: mailbox.address,
+      mailboxResourceId: mailbox.resourceId,
       subject: '',
       teaser: '',
       date: '',
@@ -129,6 +147,8 @@ async function getHostingerData() {
     loading.value = false
   }
 }
+
+console.log("MAILBOXES:", mails.value)
 
 onMounted(() => {
   getHostingerData()
@@ -250,7 +270,7 @@ onMounted(() => {
             <!-- Mailboxes -->
             <a
               v-for="mail in mails"
-              :key="mail.email"
+              :key="mail.mailboxResourceId"
               href="#"
               :class="[
                 'flex items-center gap-3 border-b p-3 text-sm last:border-b-0',
@@ -259,12 +279,7 @@ onMounted(() => {
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                   : ''
               ]"
-              @click.prevent="
-                () => {
-                  selectedMailbox = mail.email
-                  emit('mailboxSelected', mail.email)
-                }
-              "
+              @click.prevent="selectMailbox(mail)"
             >
               <Mail class="size-4 shrink-0" />
 

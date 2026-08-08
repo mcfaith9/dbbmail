@@ -24,5 +24,16 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
 })
 
 contextBridge.exposeInMainWorld('hostinger', {
-  getMe: () => ipcRenderer.invoke('hostinger:me'),
+  getMe: () =>
+    ipcRenderer.invoke('hostinger:me'),
+
+  getMailboxMessages: (
+    mailboxResourceId: string,
+    folder: string
+  ) =>
+    ipcRenderer.invoke(
+      'hostinger:userinbox',
+      mailboxResourceId,
+      folder
+    ),
 })

@@ -21,5 +21,10 @@ electron.contextBridge.exposeInMainWorld("ipcRenderer", {
   // ...
 });
 electron.contextBridge.exposeInMainWorld("hostinger", {
-  getMe: () => electron.ipcRenderer.invoke("hostinger:me")
+  getMe: () => electron.ipcRenderer.invoke("hostinger:me"),
+  getMailboxMessages: (mailboxResourceId, folder) => electron.ipcRenderer.invoke(
+    "hostinger:userinbox",
+    mailboxResourceId,
+    folder
+  )
 });

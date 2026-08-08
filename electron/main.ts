@@ -4,7 +4,7 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import { getHostingerMe } from './services/hostinger'
+import { getMailboxes, getUserInbox } from './services/hostinger'
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -31,10 +31,18 @@ let win: BrowserWindow | null
 
 // Hostinger IPC
 ipcMain.handle('hostinger:me', async () => {
-  console.log('📨 Hostinger IPC called')
-
-  return await getHostingerMe()
+  return await getMailboxes()
 })
+
+ipcMain.handle(
+  'hostinger:userinbox',
+  async (_event, mailboxResourceId: string, folder: string) => {
+    return await getUserInbox(
+      mailboxResourceId,
+      folder
+    )
+  }
+)
 
 function createWindow() {
   win = new BrowserWindow({
