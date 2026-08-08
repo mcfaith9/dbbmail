@@ -4,7 +4,9 @@ import {
   Bell,
   ChevronsUpDown,
   LogOut,
+  Moon,
   Settings,
+  Sun,
 } from "@lucide/vue"
 
 import {
@@ -29,10 +31,12 @@ import {
 } from '@/components/ui/sidebar'
 
 import { useAuth } from '@/composables/useAuth'
+import { useTheme } from '@/composables/useTheme'
 
 const { logout } = useAuth()
+const { isDark, toggleTheme } = useTheme()
 
-const props = defineProps<{
+defineProps<{
   user: {
     name: string
     email: string
@@ -87,6 +91,10 @@ const { isMobile } = useSidebar()
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
+            <DropdownMenuItem @click="toggleTheme">
+              <Sun v-if="isDark" class="size-4 mr-2 text-amber-400" />
+              <Moon v-else class="size-4 mr-2" />
+            </DropdownMenuItem>
             <DropdownMenuItem>
               <Settings />
               Settings
