@@ -28,6 +28,9 @@ import {
 
 const selectedMailbox = ref<string | null>(null)
 const selectedMailboxResourceId = ref<string | null>(null)
+const activeFolder = ref<string>("Inbox")
+const activeMessage = ref<any | null>(null)
+
 const messages = ref<any[]>([])
 const pagination = ref({
   page: 1,
@@ -42,26 +45,38 @@ async function handleMailboxSelected(
   email: string,
   mailboxResourceId: string
 ) {
-  console.log("EMAIL:", email)
-  console.log("RESOURCE ID:", mailboxResourceId)
-
   selectedMailbox.value = email
   selectedMailboxResourceId.value = mailboxResourceId
+  activeMessage.value = null
   pagination.value.page = 1
 
-  await fetchMessages(mailboxResourceId, 1, pagination.value.perPage)
+  await fetchMessages(mailboxResourceId, 1, pagination.value.perPage, activeFolder.value)
+}
+
+function handleFolderSelected(folderTitle: string) {
+  activeFolder.value = folderTitle
+  activeMessage.value = null
+  if (selectedMailboxResourceId.value) {
+    pagination.value.page = 1
+    fetchMessages(selectedMailboxResourceId.value, 1, pagination.value.perPage, folderTitle)
+  }
+}
+
+function handleMessageSelected(msg: any | null) {
+  activeMessage.value = msg
 }
 
 async function fetchMessages(
   mailboxResourceId: string,
   page = pagination.value.page,
-  perPage = pagination.value.perPage
+  perPage = pagination.value.perPage,
+  folderName = activeFolder.value
 ) {
   messagesLoading.value = true
   messagesError.value = null
 
   try {
-    const folder = "INBOX"
+    const folder = folderName.toUpperCase()
 
     const response =
       await window.hostinger.getMailboxMessages(
@@ -146,6 +161,7 @@ function handleRefresh() {
 
 <template>
   <SidebarProvider
+    class="h-screen w-screen overflow-hidden"
     :style="{
       '--sidebar-width': '350px',
     }"
@@ -153,36 +169,67 @@ function handleRefresh() {
     <!-- LEFT SIDEBAR + SECOND SIDEBAR -->
     <AppSidebar
       @mailbox-selected="handleMailboxSelected"
+      @folder-selected="handleFolderSelected"
     />
 
     <!-- MAIN CONTENT -->
-    <SidebarInset>
+    <SidebarInset class="flex flex-col h-screen overflow-hidden min-w-0">
       <header
-        class="bg-background sticky top-0 flex shrink-0 items-center justify-between gap-2 border-b p-4 z-20"
+        class="bg-background sticky top-0 flex shrink-0 items-center justify-between gap-2 border-b p-3.5 z-20"
       >
-        <div class="flex items-center gap-2">
-          <SidebarTrigger class="-ml-1" />
+        <div class="flex items-center gap-2 min-w-0 overflow-hidden">
+          <SidebarTrigger class="-ml-1 shrink-0" />
 
           <Separator
             orientation="vertical"
-            class="mr-2 data-[orientation=vertical]:h-4"
+            class="mr-2 shrink-0 data-[orientation=vertical]:h-4"
           />
 
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem class="hidden md:block">
-                <BreadcrumbLink href="#">
+          <!-- DYNAMIC BREADCRUMBS -->
+          <Breadcrumb class="min-w-0 overflow-hidden">
+            <BreadcrumbList class="flex-nowrap truncate">
+              <!-- Level 1: Root -->
+              <BreadcrumbItem class="shrink-0">
+                <BreadcrumbLink
+                  href="#"
+                  @click.prevent="activeMessage = null"
+                  class="hover:text-foreground transition-colors"
+                >
                   All Mailboxes
                 </BreadcrumbLink>
               </BreadcrumbItem>
 
-              <BreadcrumbSeparator class="hidden md:block" />
+              <!-- Level 2: Selected Mailbox Account -->
+              <template v-if="selectedMailbox">
+                <BreadcrumbSeparator class="shrink-0" />
+                <BreadcrumbItem class="shrink-0">
+                  <BreadcrumbLink
+                    href="#"
+                    @click.prevent="activeMessage = null"
+                    class="font-medium hover:text-foreground transition-colors"
+                  >
+                    {{ selectedMailbox }}
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+              </template>
 
-              <BreadcrumbItem>
-                <BreadcrumbPage>
-                  Inbox
+              <!-- Level 3: Active Folder -->
+              <BreadcrumbSeparator class="shrink-0" />
+              <BreadcrumbItem :class="activeMessage ? 'shrink-0' : 'truncate'">
+                <BreadcrumbPage :class="activeMessage ? '' : 'font-semibold text-foreground'">
+                  {{ activeFolder }}
                 </BreadcrumbPage>
               </BreadcrumbItem>
+
+              <!-- Level 4: Active Message Subject -->
+              <template v-if="activeMessage">
+                <BreadcrumbSeparator class="shrink-0" />
+                <BreadcrumbItem class="truncate">
+                  <BreadcrumbPage class="font-semibold text-foreground truncate">
+                    {{ activeMessage.subject || '(No Subject)' }}
+                  </BreadcrumbPage>
+                </BreadcrumbItem>
+              </template>
             </BreadcrumbList>
           </Breadcrumb>
         </div>
@@ -190,7 +237,7 @@ function handleRefresh() {
         <Button
           variant="outline"
           size="sm"
-          class="h-8 px-2.5 text-xs gap-1.5"
+          class="h-8 px-2.5 text-xs gap-1.5 shrink-0"
           @click="toggleTheme"
         >
           <Sun v-if="isDark" class="h-3.5 w-3.5 text-amber-400" />
@@ -199,7 +246,7 @@ function handleRefresh() {
       </header>
 
       <!-- EMAIL CONTENT -->
-      <div class="flex flex-1 flex-col">
+      <div class="flex flex-1 flex-col overflow-hidden min-h-0">
 
         <!-- Nothing selected -->
         <div
@@ -212,33 +259,33 @@ function handleRefresh() {
         <!-- Mailbox selected -->
         <div
           v-else
-          class="flex flex-1 flex-col"
+          class="flex flex-1 flex-col overflow-hidden min-h-0"
         >
           <!-- Email header -->
-          <div class="border-b p-2">
-            <div class="flex items-center gap-2">
+          <div class="border-b p-2.5 shrink-0 bg-card/20">
+            <div class="flex items-center gap-2.5">
               <div
-                class="flex size-8 items-center justify-center rounded-full bg-muted"
+                class="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary font-bold shrink-0"
               >
-                <span class="text-sm font-medium">
+                <span class="text-xs">
                   {{ selectedMailbox.charAt(0).toUpperCase() }}
                 </span>
               </div>
 
-              <div>
-                <h1 class="text-sm font-semibold">
+              <div class="min-w-0">
+                <h1 class="text-xs font-semibold truncate">
                   {{ selectedMailbox }}
                 </h1>
 
-                <p class="text-sm text-muted-foreground">
-                  Inbox
+                <p class="text-[11px] text-muted-foreground truncate">
+                  {{ activeFolder }}
                 </p>
               </div>
             </div>
           </div>
 
           <!-- Email body/content -->
-          <div class="flex flex-1 overflow-hidden">
+          <div class="flex flex-1 overflow-hidden min-h-0">
             <MailMessages
               :messages="messages"
               :pagination="pagination"
@@ -247,6 +294,7 @@ function handleRefresh() {
               @page-change="handlePageChange"
               @per-page-change="handlePerPageChange"
               @refresh="handleRefresh"
+              @message-selected="handleMessageSelected"
             />
           </div>
         </div>

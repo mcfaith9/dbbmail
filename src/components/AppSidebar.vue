@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { SidebarProps } from '@/components/ui/sidebar'
 import { ArchiveX, Command, File, Inbox, Send, Trash2, Mail } from "@lucide/vue"
-import { ref, onMounted, h } from 'vue'
+import { ref, computed, onMounted, h } from 'vue'
 import NavUser from '@/components/NavUser.vue'
 import { Label } from '@/components/ui/label'
 import {
@@ -15,7 +15,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from '@/components/ui/sidebar'
 import { Switch } from '@/components/ui/switch'
 
@@ -27,6 +26,9 @@ const emit = defineEmits<{
   mailboxSelected: [
     email: string,
     mailboxResourceId: string
+  ]
+  folderSelected: [
+    folderTitle: string
   ]
 }>()
 
@@ -42,6 +44,16 @@ function selectMailbox(mail: {
     mail.mailboxResourceId
   )
 }
+
+function selectFolder(item: typeof data.navMain[0]) {
+  activeItem.value = item
+  setOpen(true)
+  emit("folderSelected", item.title)
+}
+
+// Search and filter state for mailboxes
+const mailboxSearchQuery = ref('')
+const showOnlyUnreads = ref(false)
 
 // This is sample data
 const data = {
@@ -105,6 +117,18 @@ const mails = ref<
   }[]
 >([])
 
+const filteredMails = computed(() => {
+  let list = mails.value
+  if (mailboxSearchQuery.value.trim()) {
+    const query = mailboxSearchQuery.value.toLowerCase().trim()
+    list = list.filter(m =>
+      m.email.toLowerCase().includes(query) ||
+      m.name.toLowerCase().includes(query)
+    )
+  }
+  return list
+})
+
 // Currently selected first-sidebar item
 const activeItem = ref(data.navMain[0])
 
@@ -136,6 +160,11 @@ async function getHostingerData() {
       date: '',
     }))
 
+    // Automatically select first mailbox if available
+    if (mails.value.length > 0 && !selectedMailbox.value) {
+      selectMailbox(mails.value[0])
+    }
+
     // Automatically open the second sidebar
     if (mails.value.length > 0) {
       setOpen(true)
@@ -147,8 +176,6 @@ async function getHostingerData() {
     loading.value = false
   }
 }
-
-console.log("MAILBOXES:", mails.value)
 
 onMounted(() => {
   getHostingerData()
@@ -176,8 +203,8 @@ onMounted(() => {
                   <Command class="size-4" />
                 </div>
                 <div class="grid flex-1 text-left text-sm leading-tight">
-                  <span class="truncate font-medium">Acme Inc</span>
-                  <span class="truncate text-xs">Enterprise</span>
+                  <span class="truncate font-medium">DBB</span>
+                  <span class="truncate text-xs">Industrial</span>
                 </div>
               </a>
             </SidebarMenuButton>
@@ -197,12 +224,7 @@ onMounted(() => {
                   :tooltip="h('div', { hidden: false }, item.title)"
                   :is-active="activeItem.title === item.title"
                   class="px-2.5 md:px-2"
-                  @click="
-                    () => {
-                      activeItem = item
-                      setOpen(true)
-                    }
-                  "
+                  @click="selectFolder(item)"
                 >
                   <component :is="item.icon" />
                   <span>{{ item.title }}</span>
@@ -230,13 +252,16 @@ onMounted(() => {
             {{ activeItem.title }}
           </div>
 
-          <Label class="flex items-center gap-2 text-sm">
+          <Label class="flex items-center gap-2 text-sm cursor-pointer">
             <span>Unreads</span>
-            <Switch class="shadow-none" />
+            <Switch v-model:checked="showOnlyUnreads" class="shadow-none" />
           </Label>
         </div>
 
-        <SidebarInput placeholder="Type to search..." />
+        <SidebarInput
+          v-model="mailboxSearchQuery"
+          placeholder="Search mailbox accounts..."
+        />
       </SidebarHeader>
 
       <SidebarContent>
@@ -261,22 +286,22 @@ onMounted(() => {
 
             <!-- No mailboxes -->
             <div
-              v-else-if="mails.length === 0"
+              v-else-if="filteredMails.length === 0"
               class="p-4 text-sm text-muted-foreground"
             >
-              No mailboxes found.
+              {{ mailboxSearchQuery ? 'No matching mailboxes.' : 'No mailboxes found.' }}
             </div>
 
             <!-- Mailboxes -->
             <a
-              v-for="mail in mails"
+              v-for="mail in filteredMails"
               :key="mail.mailboxResourceId"
               href="#"
               :class="[
-                'flex items-center gap-3 border-b p-3 text-sm last:border-b-0',
+                'flex items-center gap-3 border-b p-3 text-sm last:border-b-0 transition-colors',
                 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                 selectedMailbox === mail.email
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
                   : ''
               ]"
               @click.prevent="selectMailbox(mail)"

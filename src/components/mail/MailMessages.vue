@@ -77,6 +77,7 @@ const emit = defineEmits<{
   (e: 'page-change', page: number): void
   (e: 'per-page-change', perPage: number): void
   (e: 'refresh'): void
+  (e: 'message-selected', message: Message | null): void
 }>()
 
 const activeMessage = ref<Message | null>(null)
@@ -114,10 +115,20 @@ const pageRangeEnd = computed(() => {
   )
 })
 
+function clearSearch() {
+  searchQuery.value = ''
+}
+
 function selectMessage(msg: Message) {
   activeMessage.value = msg
   msg.unseen = false
   msg.unread = false
+  emit('message-selected', msg)
+}
+
+function closeDetail() {
+  activeMessage.value = null
+  emit('message-selected', null)
 }
 
 function formatDate(dateStr?: string) {
@@ -183,14 +194,23 @@ function changePerPage(event: Event) {
 <template>
   <div class="flex flex-1 flex-col w-full h-full bg-background overflow-hidden">
     <!-- Search & Toolbar Header -->
-    <div class="flex items-center justify-between gap-4 border-b p-3 bg-card/40">
+    <div class="flex items-center justify-between gap-4 border-b p-3 bg-card/40 shrink-0">
       <div class="relative flex-1 max-w-sm">
         <Search class="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           v-model="searchQuery"
           placeholder="Filter messages by sender, subject..."
-          class="pl-9 h-9 text-xs"
+          class="pl-9 pr-8 h-9 text-xs"
         />
+        <Button
+          v-if="searchQuery"
+          variant="ghost"
+          size="icon"
+          class="absolute right-1 top-1 h-7 w-7 text-muted-foreground hover:text-foreground"
+          @click="clearSearch"
+        >
+          <X class="h-3.5 w-3.5" />
+        </Button>
       </div>
 
       <div class="flex items-center gap-2">
@@ -214,7 +234,7 @@ function changePerPage(event: Event) {
     </div>
 
     <!-- Main Table / Detail Split Body -->
-    <div class="flex flex-1 overflow-hidden relative">
+    <div class="flex flex-1 min-h-0 overflow-hidden relative">
       <!-- Loading State Overlay / Spinner -->
       <div
         v-if="loading && messages.length === 0"
@@ -249,16 +269,16 @@ function changePerPage(event: Event) {
       </div>
 
       <!-- Messages Table + Detail View Split -->
-      <div v-else class="flex flex-1 h-full w-full overflow-hidden">
+      <div v-else class="flex flex-1 h-full w-full min-h-0 overflow-hidden">
         <!-- Messages Table View -->
         <div
           :class="[
-            'flex flex-col h-full overflow-y-auto border-r transition-all',
-            activeMessage ? 'w-full md:w-1/2 lg:w-5/12 hidden md:flex' : 'w-full'
+            'flex flex-col h-full min-h-0 overflow-y-auto border-r transition-all',
+            activeMessage ? 'w-full md:w-[320px] lg:w-[380px] shrink-0 hidden md:flex' : 'w-full'
           ]"
         >
           <Table>
-            <TableHeader class="bg-muted/30 sticky top-0 z-10">
+            <TableHeader class="sticky top-0 z-10 bg-background">
               <TableRow>
                 <TableHead class="w-[36px] px-2 text-center"></TableHead>
                 <TableHead class="w-[160px]">Sender</TableHead>
@@ -337,7 +357,7 @@ function changePerPage(event: Event) {
         <!-- Detail Reading Pane -->
         <div
           v-if="activeMessage"
-          class="flex-1 flex flex-col h-full overflow-y-auto bg-background p-6 border-l"
+          class="flex-1 min-w-0 flex flex-col h-full overflow-y-auto bg-background p-6 lg:p-8 border-l"
         >
           <!-- Detail Header -->
           <div class="flex items-start justify-between pb-4 border-b gap-4">
@@ -353,12 +373,12 @@ function changePerPage(event: Event) {
                   UID: {{ activeMessage.uid }}
                 </span>
               </div>
-              <h2 class="text-lg font-bold text-foreground">
+              <h2 class="text-lg font-bold text-foreground leading-snug">
                 {{ activeMessage.subject || '(No Subject)' }}
               </h2>
             </div>
 
-            <Button variant="ghost" size="icon" @click="activeMessage = null">
+            <Button variant="ghost" size="icon" @click="closeDetail">
               <X class="h-4 w-4" />
             </Button>
           </div>

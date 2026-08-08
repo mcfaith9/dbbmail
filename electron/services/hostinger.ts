@@ -23,7 +23,7 @@ export async function getMailboxes() {
 
 export async function getUserInbox(
   mailboxResourceId: string,
-  folder: string = 'INBOX'
+  // folder: string = 'INBOX'
 ) {
   const token = process.env.HOSTINGER_API_TOKEN
 

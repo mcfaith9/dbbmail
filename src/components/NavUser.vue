@@ -94,6 +94,9 @@ const { isMobile } = useSidebar()
             <DropdownMenuItem @click="toggleTheme">
               <Sun v-if="isDark" class="size-4 mr-2 text-amber-400" />
               <Moon v-else class="size-4 mr-2" />
+              <span>
+                {{ isDark ? 'Light Mode' : 'Dark Mode' }}
+              </span>
             </DropdownMenuItem>
             <DropdownMenuItem>
               <Settings />
