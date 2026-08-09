@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Moon, Sun } from "@lucide/vue"
+import { Moon, Sun, Lock } from "@lucide/vue"
 
 import AppSidebar from "@/components/AppSidebar.vue"
 import MailMessages from "@/components/mail/MailMessages.vue"
+import MailInboxEmptyState from '@/components/mail/MailInboxEmptyState.vue'
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/composables/useTheme"
 import { useMailMessages } from "@/composables/useMailMessages"
@@ -118,15 +119,36 @@ const {
           </Breadcrumb>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          class="h-8 px-2.5 text-xs gap-1.5 shrink-0"
-          @click="toggleTheme"
-        >
-          <Sun v-if="isDark" class="h-3.5 w-3.5 text-amber-400" />
-          <Moon v-else class="h-3.5 w-3.5" />
-        </Button>
+        <!-- RIGHT SIDE -->
+        <div class="ml-auto flex items-center gap-2 shrink-0">
+
+          <!-- Dark Mode -->
+          <Button
+            variant="outline"
+            size="sm"
+            class="h-8 w-8 p-0"
+            @click="toggleTheme"
+          >
+            <Sun
+              v-if="isDark"
+              class="h-3.5 w-3.5 text-amber-400"
+            />
+            <Moon
+              v-else
+              class="h-3.5 w-3.5"
+            />
+          </Button>
+
+          <!-- Lock -->
+          <Button
+            variant="outline"
+            size="sm"
+            class="h-8 w-8 p-0"
+          >
+            <Lock class="h-3.5 w-3.5" />
+          </Button>
+
+        </div>
       </header>
 
       <!-- EMAIL CONTENT -->
@@ -137,7 +159,7 @@ const {
           v-if="!selectedMailbox"
           class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
         >
-          Select an email mailbox
+          <MailInboxEmptyState />
         </div>
 
         <!-- Mailbox selected -->

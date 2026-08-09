@@ -96,7 +96,7 @@ function closeDetail() {
     <!-- Main Table / Detail Split Body -->
     <div class="flex flex-1 min-h-0 overflow-hidden relative">
       <!-- Loading State Overlay / Spinner -->
-      <MailLoadingState v-if="loading && messages.length === 0" />
+      <MailLoadingState  v-if="loading && messages.length === 0"/>
 
       <!-- Error State -->
       <MailErrorState v-else-if="error" :error="error" @refresh="emit('refresh')" />

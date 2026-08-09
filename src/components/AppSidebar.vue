@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { computed, h, ref, onMounted } from 'vue'
-import { Mail } from '@lucide/vue'
+import { ArchiveX, Command, File, Inbox, Send, Trash2, Mail, MailX, SearchX } from "@lucide/vue"
+
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty'
 
 import {
   Sidebar,
@@ -34,12 +42,35 @@ const data = {
       title: 'Inbox',
       icon: Mail,
     },
-    // Your other folders...
+    {
+      title: "Drafts",
+      url: "#",
+      icon: File,
+      isActive: false,
+    },
+    {
+      title: "Sent",
+      url: "#",
+      icon: Send,
+      isActive: false,
+    },
+    {
+      title: "Junk",
+      url: "#",
+      icon: ArchiveX,
+      isActive: false,
+    },
+    {
+      title: "Trash",
+      url: "#",
+      icon: Trash2,
+      isActive: false,
+    },
   ],
 
   user: {
-    name: 'Mail',
-    email: '',
+    name: 'DBB Admin',
+    email: 'admin@dbb.com',
     avatar: '',
   },
 }
@@ -238,10 +269,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <Sidebar
-    class="overflow-hidden *:data-[sidebar=sidebar]:flex-row"
-    v-bind="props"
-  >
+  <Sidebar class="overflow-hidden *:data-[sidebar=sidebar]:flex-row">
     <!-- This is the first sidebar -->
     <!-- We disable collapsible and adjust width to icon. -->
     <!-- This will make the sidebar appear as icons. -->
@@ -344,7 +372,26 @@ onMounted(() => {
               v-else-if="filteredMails.length === 0"
               class="p-4 text-sm text-muted-foreground"
             >
-              {{ mailboxSearchQuery ? 'No matching mailboxes.' : 'No mailboxes found.' }}
+              <Empty class="border-0">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <SearchX v-if="mailboxSearchQuery" />
+                    <MailX v-else />
+                  </EmptyMedia>
+
+                  <EmptyTitle class="text-sm">
+                    {{ mailboxSearchQuery ? 'Nothing matched your search' : 'Your mailbox is empty' }}
+                  </EmptyTitle>
+
+                  <EmptyDescription class="text-xs">
+                    {{
+                      mailboxSearchQuery
+                        ? 'Try another keyword and let’s take another look.'
+                        : 'No email accounts are available right now.'
+                    }}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             </div>
 
             <!-- Mailboxes -->

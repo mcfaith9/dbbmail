@@ -168,12 +168,16 @@ const sanitizedHtml = computed(() => {
   <!-- Placeholder when no message selected -->
   <div
     v-else
-    class="hidden md:flex w-[240px] shrink-0 flex-col items-center justify-center p-8 text-sm text-muted-foreground bg-muted/10"
+    class="hidden md:flex w-[240px] shrink-0 flex-col items-center justify-center p-8 text-center bg-muted/10"
   >
-    <Mail class="h-10 w-10 mb-2 text-muted-foreground/30" />
-    <p class="font-medium text-foreground">Select an email message</p>
-    <p class="text-xs text-muted-foreground mt-0.5">
-      Click on any row in the table to view the message body.
+    <Mail class="h-10 w-10 mb-3 text-muted-foreground/30" />
+
+    <p class="font-medium text-foreground">
+      Ready when you are
+    </p>
+
+    <p class="text-xs text-muted-foreground mt-1">
+      Pick a message from your inbox to start reading.
     </p>
   </div>
 </template>

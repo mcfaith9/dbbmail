@@ -93,7 +93,7 @@ const { isMobile } = useSidebar()
           <DropdownMenuGroup>
             <DropdownMenuItem @click="toggleTheme">
               <Sun v-if="isDark" class="size-4 mr-2 text-amber-400" />
-              <Moon v-else class="size-4 mr-2" />
+              <Moon v-else class="size-4" />
               <span>
                 {{ isDark ? 'Light Mode' : 'Dark Mode' }}
               </span>

@@ -1,6 +1,6 @@
 import 'dotenv/config'
 
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, globalShortcut } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -78,10 +78,28 @@ ipcMain.handle(
 function createWindow() {
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+    width: 1200,
+    height: 800,
+    minWidth: 1200,
+    minHeight: 800,
+
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
   })
+
+  Menu.setApplicationMenu(null)
+
+  win.webContents.on('before-input-event', (event, input) => {
+    if (
+      input.control &&
+      input.shift &&
+      input.key.toLowerCase() === 'i'
+    ) {
+      event.preventDefault();
+      win.webContents.toggleDevTools();
+    }
+  });
 
   // Test active push message to Renderer-process.
   win.webContents.on('did-finish-load', () => {

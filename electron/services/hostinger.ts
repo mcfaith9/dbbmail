@@ -38,9 +38,6 @@ function getHeaders(account: HostingerAccount) {
 async function getMailboxesByToken(
   account: HostingerAccount
 ) {
-  console.log(
-    `[Hostinger] Fetching mailboxes for ${account}`
-  )
 
   const response = await axios.get(
     `${HOSTINGER_API_URL}/me`,
@@ -66,11 +63,6 @@ export async function getMailboxes() {
       const mailboxes =
         response?.data?.mailboxes ?? []
 
-      console.log(
-        `[Hostinger] ${account} mailboxes:`,
-        mailboxes.length
-      )
-
       return mailboxes.map((mailbox: any) => ({
         resourceId: mailbox.resourceId,
         address: mailbox.address,
@@ -80,11 +72,6 @@ export async function getMailboxes() {
   )
 
   const combined = results.flat()
-
-  console.log(
-    '[Hostinger] Combined mailboxes:',
-    combined.length
-  )
 
   return {
     data: combined,
@@ -102,14 +89,6 @@ export async function getUserInbox(
   folder: string = 'INBOX',
   hostingerAccount: HostingerAccount = 'DMBB'
 ) {
-  console.log(
-    '[Hostinger] Fetching messages:',
-    {
-      mailboxResourceId,
-      folder,
-      hostingerAccount,
-    }
-  )
 
   const response = await axios.get(
     `${HOSTINGER_API_URL}/mailboxes/${mailboxResourceId}/folders/${folder}/messages`,
@@ -133,15 +112,15 @@ export async function getUserMessageContent(
   uid: number,
   hostingerAccount: HostingerAccount = 'DMBB'
 ) {
-  console.log(
-    '[Hostinger] Fetching message content:',
-    {
-      mailboxResourceId,
-      folder,
-      uid,
-      hostingerAccount,
-    }
-  )
+  // console.log(
+  //   '[Hostinger] Fetching message content:',
+  //   {
+  //     mailboxResourceId,
+  //     folder,
+  //     uid,
+  //     hostingerAccount,
+  //   }
+  // )
 
   const response = await axios.get(
     `${HOSTINGER_API_URL}/mailboxes/${mailboxResourceId}/folders/${folder}/messages/${uid}/text`,

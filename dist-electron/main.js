@@ -2,7 +2,7 @@ import require$$0$1 from "fs";
 import require$$1, { resolve } from "path";
 import require$$2 from "os";
 import require$$3 from "crypto";
-import { ipcMain, app, BrowserWindow } from "electron";
+import { ipcMain, app, BrowserWindow, Menu } from "electron";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path$2 from "node:path";
@@ -12639,14 +12639,7 @@ var _eval = EvalError;
 var range = RangeError;
 var ref = ReferenceError;
 var syntax = SyntaxError;
-var type;
-var hasRequiredType;
-function requireType() {
-  if (hasRequiredType) return type;
-  hasRequiredType = 1;
-  type = TypeError;
-  return type;
-}
+var type = TypeError;
 var uri = URIError;
 var abs$1 = Math.abs;
 var floor$1 = Math.floor;
@@ -12892,7 +12885,7 @@ function requireCallBindApplyHelpers() {
   if (hasRequiredCallBindApplyHelpers) return callBindApplyHelpers;
   hasRequiredCallBindApplyHelpers = 1;
   var bind3 = functionBind;
-  var $TypeError2 = requireType();
+  var $TypeError2 = type;
   var $call2 = requireFunctionCall();
   var $actualApply = requireActualApply();
   callBindApplyHelpers = function callBindBasic(args) {
@@ -12965,7 +12958,7 @@ var $EvalError = _eval;
 var $RangeError = range;
 var $ReferenceError = ref;
 var $SyntaxError = syntax;
-var $TypeError$1 = requireType();
+var $TypeError$1 = type;
 var $URIError = uri;
 var abs = abs$1;
 var floor = floor$1;
@@ -13296,7 +13289,7 @@ var GetIntrinsic2 = getIntrinsic;
 var $defineProperty = GetIntrinsic2("%Object.defineProperty%", true);
 var hasToStringTag = requireShams()();
 var hasOwn$1 = hasown;
-var $TypeError = requireType();
+var $TypeError = type;
 var toStringTag = hasToStringTag ? Symbol.toStringTag : null;
 var esSetTostringtag = function setToStringTag(object, value) {
   var overrideIfSet = arguments.length > 2 && !!arguments[2] && arguments[2].force;
@@ -13340,9 +13333,9 @@ var populate = populate$1;
 function escapeHeaderParam(str) {
   return String(str).replace(/\r/g, "%0D").replace(/\n/g, "%0A").replace(/"/g, "%22");
 }
-function FormData$2(options2) {
-  if (!(this instanceof FormData$2)) {
-    return new FormData$2(options2);
+function FormData$1(options2) {
+  if (!(this instanceof FormData$1)) {
+    return new FormData$1(options2);
   }
   this._overheadLength = 0;
   this._valueLength = 0;
@@ -13353,10 +13346,10 @@ function FormData$2(options2) {
     this[option] = options2[option];
   }
 }
-util.inherits(FormData$2, CombinedStream);
-FormData$2.LINE_BREAK = "\r\n";
-FormData$2.DEFAULT_CONTENT_TYPE = "application/octet-stream";
-FormData$2.prototype.append = function(field, value, options2) {
+util.inherits(FormData$1, CombinedStream);
+FormData$1.LINE_BREAK = "\r\n";
+FormData$1.DEFAULT_CONTENT_TYPE = "application/octet-stream";
+FormData$1.prototype.append = function(field, value, options2) {
   options2 = options2 || {};
   if (typeof options2 === "string") {
     options2 = { filename: options2 };
@@ -13376,7 +13369,7 @@ FormData$2.prototype.append = function(field, value, options2) {
   append2(footer);
   this._trackLength(header, value, options2);
 };
-FormData$2.prototype._trackLength = function(header, value, options2) {
+FormData$1.prototype._trackLength = function(header, value, options2) {
   var valueLength = 0;
   if (options2.knownLength != null) {
     valueLength += Number(options2.knownLength);
@@ -13386,7 +13379,7 @@ FormData$2.prototype._trackLength = function(header, value, options2) {
     valueLength = Buffer.byteLength(value);
   }
   this._valueLength += valueLength;
-  this._overheadLength += Buffer.byteLength(header) + FormData$2.LINE_BREAK.length;
+  this._overheadLength += Buffer.byteLength(header) + FormData$1.LINE_BREAK.length;
   if (!value || !value.path && !(value.readable && hasOwn(value, "httpVersion")) && !(value instanceof Stream)) {
     return;
   }
@@ -13394,7 +13387,7 @@ FormData$2.prototype._trackLength = function(header, value, options2) {
     this._valuesToMeasure.push(value);
   }
 };
-FormData$2.prototype._lengthRetriever = function(value, callback) {
+FormData$1.prototype._lengthRetriever = function(value, callback) {
   if (hasOwn(value, "fd")) {
     if (value.end != void 0 && value.end != Infinity && value.start != void 0) {
       callback(null, value.end + 1 - (value.start ? value.start : 0));
@@ -13420,7 +13413,7 @@ FormData$2.prototype._lengthRetriever = function(value, callback) {
     callback("Unknown stream");
   }
 };
-FormData$2.prototype._multiPartHeader = function(field, value, options2) {
+FormData$1.prototype._multiPartHeader = function(field, value, options2) {
   if (typeof options2.header === "string") {
     return options2.header;
   }
@@ -13447,13 +13440,13 @@ FormData$2.prototype._multiPartHeader = function(field, value, options2) {
         header = [header];
       }
       if (header.length) {
-        contents += prop + ": " + header.join("; ") + FormData$2.LINE_BREAK;
+        contents += prop + ": " + header.join("; ") + FormData$1.LINE_BREAK;
       }
     }
   }
-  return "--" + this.getBoundary() + FormData$2.LINE_BREAK + contents + FormData$2.LINE_BREAK;
+  return "--" + this.getBoundary() + FormData$1.LINE_BREAK + contents + FormData$1.LINE_BREAK;
 };
-FormData$2.prototype._getContentDisposition = function(value, options2) {
+FormData$1.prototype._getContentDisposition = function(value, options2) {
   var filename;
   if (typeof options2.filepath === "string") {
     filename = path.normalize(options2.filepath).replace(/\\/g, "/");
@@ -13466,7 +13459,7 @@ FormData$2.prototype._getContentDisposition = function(value, options2) {
     return 'filename="' + escapeHeaderParam(filename) + '"';
   }
 };
-FormData$2.prototype._getContentType = function(value, options2) {
+FormData$1.prototype._getContentType = function(value, options2) {
   var contentType = options2.contentType;
   if (!contentType && value && value.name) {
     contentType = mime.lookup(value.name);
@@ -13481,13 +13474,13 @@ FormData$2.prototype._getContentType = function(value, options2) {
     contentType = mime.lookup(options2.filepath || options2.filename);
   }
   if (!contentType && value && typeof value === "object") {
-    contentType = FormData$2.DEFAULT_CONTENT_TYPE;
+    contentType = FormData$1.DEFAULT_CONTENT_TYPE;
   }
   return contentType;
 };
-FormData$2.prototype._multiPartFooter = function() {
+FormData$1.prototype._multiPartFooter = function() {
   return (function(next) {
-    var footer = FormData$2.LINE_BREAK;
+    var footer = FormData$1.LINE_BREAK;
     var lastPart = this._streams.length === 0;
     if (lastPart) {
       footer += this._lastBoundary();
@@ -13495,10 +13488,10 @@ FormData$2.prototype._multiPartFooter = function() {
     next(footer);
   }).bind(this);
 };
-FormData$2.prototype._lastBoundary = function() {
-  return "--" + this.getBoundary() + "--" + FormData$2.LINE_BREAK;
+FormData$1.prototype._lastBoundary = function() {
+  return "--" + this.getBoundary() + "--" + FormData$1.LINE_BREAK;
 };
-FormData$2.prototype.getHeaders = function(userHeaders) {
+FormData$1.prototype.getHeaders = function(userHeaders) {
   var header;
   var formHeaders = {
     "content-type": "multipart/form-data; boundary=" + this.getBoundary()
@@ -13510,19 +13503,19 @@ FormData$2.prototype.getHeaders = function(userHeaders) {
   }
   return formHeaders;
 };
-FormData$2.prototype.setBoundary = function(boundary) {
+FormData$1.prototype.setBoundary = function(boundary) {
   if (typeof boundary !== "string") {
     throw new TypeError("FormData boundary must be a string");
   }
   this._boundary = boundary;
 };
-FormData$2.prototype.getBoundary = function() {
+FormData$1.prototype.getBoundary = function() {
   if (!this._boundary) {
     this._generateBoundary();
   }
   return this._boundary;
 };
-FormData$2.prototype.getBuffer = function() {
+FormData$1.prototype.getBuffer = function() {
   var dataBuffer = new Buffer.alloc(0);
   var boundary = this.getBoundary();
   for (var i = 0, len = this._streams.length; i < len; i++) {
@@ -13533,16 +13526,16 @@ FormData$2.prototype.getBuffer = function() {
         dataBuffer = Buffer.concat([dataBuffer, Buffer.from(this._streams[i])]);
       }
       if (typeof this._streams[i] !== "string" || this._streams[i].substring(2, boundary.length + 2) !== boundary) {
-        dataBuffer = Buffer.concat([dataBuffer, Buffer.from(FormData$2.LINE_BREAK)]);
+        dataBuffer = Buffer.concat([dataBuffer, Buffer.from(FormData$1.LINE_BREAK)]);
       }
     }
   }
   return Buffer.concat([dataBuffer, Buffer.from(this._lastBoundary())]);
 };
-FormData$2.prototype._generateBoundary = function() {
+FormData$1.prototype._generateBoundary = function() {
   this._boundary = "--------------------------" + crypto.randomBytes(12).toString("hex");
 };
-FormData$2.prototype.getLengthSync = function() {
+FormData$1.prototype.getLengthSync = function() {
   var knownLength = this._overheadLength + this._valueLength;
   if (this._streams.length) {
     knownLength += this._lastBoundary().length;
@@ -13552,14 +13545,14 @@ FormData$2.prototype.getLengthSync = function() {
   }
   return knownLength;
 };
-FormData$2.prototype.hasKnownLength = function() {
+FormData$1.prototype.hasKnownLength = function() {
   var hasKnownLength = true;
   if (this._valuesToMeasure.length) {
     hasKnownLength = false;
   }
   return hasKnownLength;
 };
-FormData$2.prototype.getLength = function(cb) {
+FormData$1.prototype.getLength = function(cb) {
   var knownLength = this._overheadLength + this._valueLength;
   if (this._streams.length) {
     knownLength += this._lastBoundary().length;
@@ -13579,7 +13572,7 @@ FormData$2.prototype.getLength = function(cb) {
     cb(null, knownLength);
   });
 };
-FormData$2.prototype.submit = function(params, cb) {
+FormData$1.prototype.submit = function(params, cb) {
   var request;
   var options2;
   var defaults2 = { method: "post" };
@@ -13626,19 +13619,19 @@ FormData$2.prototype.submit = function(params, cb) {
   }).bind(this));
   return request;
 };
-FormData$2.prototype._error = function(err) {
+FormData$1.prototype._error = function(err) {
   if (!this.error) {
     this.error = err;
     this.pause();
     this.emit("error", err);
   }
 };
-FormData$2.prototype.toString = function() {
+FormData$1.prototype.toString = function() {
   return "[object FormData]";
 };
-setToStringTag2(FormData$2.prototype, "FormData");
-var form_data = FormData$2;
-const FormData$1 = /* @__PURE__ */ getDefaultExportFromCjs(form_data);
+setToStringTag2(FormData$1.prototype, "FormData");
+var form_data = FormData$1;
+const FormData$2 = /* @__PURE__ */ getDefaultExportFromCjs(form_data);
 const PlatformBuffer = {
   isBufferAvailable() {
     return typeof Buffer !== "undefined";
@@ -13671,7 +13664,7 @@ function toFormData$1(obj, formData, options2) {
   if (!utils$1.isObject(obj)) {
     throw new TypeError("target must be an object");
   }
-  formData = formData || new (FormData$1 || FormData)();
+  formData = formData || new (FormData$2 || FormData)();
   options2 = utils$1.toFlatObject(
     options2,
     {
@@ -13943,7 +13936,7 @@ const platform$1 = {
   isNode: true,
   classes: {
     URLSearchParams,
-    FormData: FormData$1,
+    FormData: FormData$2,
     Blob: typeof Blob !== "undefined" && Blob || null
   },
   ALPHABET,
@@ -19349,9 +19342,6 @@ function getHeaders(account) {
   };
 }
 async function getMailboxesByToken(account) {
-  console.log(
-    `[Hostinger] Fetching mailboxes for ${account}`
-  );
   const response = await axios.get(
     `${HOSTINGER_API_URL}/me`,
     {
@@ -19370,10 +19360,6 @@ async function getMailboxes() {
       var _a;
       const response = await getMailboxesByToken(account);
       const mailboxes = ((_a = response == null ? void 0 : response.data) == null ? void 0 : _a.mailboxes) ?? [];
-      console.log(
-        `[Hostinger] ${account} mailboxes:`,
-        mailboxes.length
-      );
       return mailboxes.map((mailbox) => ({
         resourceId: mailbox.resourceId,
         address: mailbox.address,
@@ -19382,23 +19368,11 @@ async function getMailboxes() {
     })
   );
   const combined = results.flat();
-  console.log(
-    "[Hostinger] Combined mailboxes:",
-    combined.length
-  );
   return {
     data: combined
   };
 }
 async function getUserInbox(mailboxResourceId, folder = "INBOX", hostingerAccount = "DMBB") {
-  console.log(
-    "[Hostinger] Fetching messages:",
-    {
-      mailboxResourceId,
-      folder,
-      hostingerAccount
-    }
-  );
   const response = await axios.get(
     `${HOSTINGER_API_URL}/mailboxes/${mailboxResourceId}/folders/${folder}/messages`,
     {
@@ -19408,15 +19382,6 @@ async function getUserInbox(mailboxResourceId, folder = "INBOX", hostingerAccoun
   return response.data;
 }
 async function getUserMessageContent(mailboxResourceId, folder, uid, hostingerAccount = "DMBB") {
-  console.log(
-    "[Hostinger] Fetching message content:",
-    {
-      mailboxResourceId,
-      folder,
-      uid,
-      hostingerAccount
-    }
-  );
   const response = await axios.get(
     `${HOSTINGER_API_URL}/mailboxes/${mailboxResourceId}/folders/${folder}/messages/${uid}/text`,
     {
@@ -19463,8 +19428,19 @@ ipcMain.handle(
 function createWindow() {
   win = new BrowserWindow({
     icon: path$2.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+    width: 1200,
+    height: 800,
+    minWidth: 1200,
+    minHeight: 800,
     webPreferences: {
       preload: path$2.join(__dirname$1, "preload.mjs")
+    }
+  });
+  Menu.setApplicationMenu(null);
+  win.webContents.on("before-input-event", (event, input) => {
+    if (input.control && input.shift && input.key.toLowerCase() === "i") {
+      event.preventDefault();
+      win.webContents.toggleDevTools();
     }
   });
   win.webContents.on("did-finish-load", () => {
