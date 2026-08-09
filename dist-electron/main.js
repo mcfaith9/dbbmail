@@ -12639,7 +12639,14 @@ var _eval = EvalError;
 var range = RangeError;
 var ref = ReferenceError;
 var syntax = SyntaxError;
-var type = TypeError;
+var type;
+var hasRequiredType;
+function requireType() {
+  if (hasRequiredType) return type;
+  hasRequiredType = 1;
+  type = TypeError;
+  return type;
+}
 var uri = URIError;
 var abs$1 = Math.abs;
 var floor$1 = Math.floor;
@@ -12885,7 +12892,7 @@ function requireCallBindApplyHelpers() {
   if (hasRequiredCallBindApplyHelpers) return callBindApplyHelpers;
   hasRequiredCallBindApplyHelpers = 1;
   var bind3 = functionBind;
-  var $TypeError2 = type;
+  var $TypeError2 = requireType();
   var $call2 = requireFunctionCall();
   var $actualApply = requireActualApply();
   callBindApplyHelpers = function callBindBasic(args) {
@@ -12958,7 +12965,7 @@ var $EvalError = _eval;
 var $RangeError = range;
 var $ReferenceError = ref;
 var $SyntaxError = syntax;
-var $TypeError$1 = type;
+var $TypeError$1 = requireType();
 var $URIError = uri;
 var abs = abs$1;
 var floor = floor$1;
@@ -13289,7 +13296,7 @@ var GetIntrinsic2 = getIntrinsic;
 var $defineProperty = GetIntrinsic2("%Object.defineProperty%", true);
 var hasToStringTag = requireShams()();
 var hasOwn$1 = hasown;
-var $TypeError = type;
+var $TypeError = requireType();
 var toStringTag = hasToStringTag ? Symbol.toStringTag : null;
 var esSetTostringtag = function setToStringTag(object, value) {
   var overrideIfSet = arguments.length > 2 && !!arguments[2] && arguments[2].force;
@@ -19390,6 +19397,29 @@ async function getUserMessageContent(mailboxResourceId, folder, uid, hostingerAc
   );
   return response.data;
 }
+async function getMailboxQuota(mailboxResourceId, hostingerAccount) {
+  const response = await axios.get(
+    `${HOSTINGER_API_URL}/mailboxes/${encodeURIComponent(
+      mailboxResourceId
+    )}/quota`,
+    {
+      headers: getHeaders(hostingerAccount)
+    }
+  );
+  console.log(
+    "[Hostinger] Mailbox quota:",
+    JSON.stringify(
+      {
+        mailboxResourceId,
+        hostingerAccount,
+        response: response.data
+      },
+      null,
+      2
+    )
+  );
+  return response.data;
+}
 createRequire(import.meta.url);
 const __dirname$1 = path$2.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path$2.join(__dirname$1, "..");
@@ -19398,6 +19428,9 @@ const MAIN_DIST = path$2.join(process.env.APP_ROOT, "dist-electron");
 const RENDERER_DIST = path$2.join(process.env.APP_ROOT, "dist");
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path$2.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
 let win;
+ipcMain.handle("app:get-version", () => {
+  return app.getVersion();
+});
 ipcMain.handle(
   "hostinger:me",
   async () => {
@@ -19421,6 +19454,15 @@ ipcMain.handle(
       mailboxResourceId,
       folder,
       uid,
+      hostingerAccount
+    );
+  }
+);
+ipcMain.handle(
+  "hostinger:get-mailbox-quota",
+  async (_event, mailboxResourceId, hostingerAccount) => {
+    return await getMailboxQuota(
+      mailboxResourceId,
       hostingerAccount
     );
   }

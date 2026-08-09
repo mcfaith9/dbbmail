@@ -8,6 +8,7 @@ import {
   getMailboxes,
   getUserInbox,
   getUserMessageContent,
+  getMailboxQuota,
 } from './services/hostinger'
 
 const require = createRequire(import.meta.url)
@@ -32,6 +33,10 @@ export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
 
 let win: BrowserWindow | null
+
+ipcMain.handle('app:get-version', () => {
+  return app.getVersion()
+})
 
 // Hostinger IPC
 ipcMain.handle(
@@ -73,6 +78,20 @@ ipcMain.handle(
       hostingerAccount
     )
   }
+)
+
+ipcMain.handle(
+  'hostinger:get-mailbox-quota',
+  async (
+    _event,
+    mailboxResourceId: string,
+    hostingerAccount: 'DMBB' | 'DBB',
+  ) => {
+    return await getMailboxQuota(
+      mailboxResourceId,
+      hostingerAccount,
+    )
+  },
 )
 
 function createWindow() {

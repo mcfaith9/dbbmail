@@ -11,10 +11,7 @@ import {
 </script>
 
 <template>
-  <div
-    v-if="!selectedMailbox"
-    class="flex flex-1 min-w-0 items-center justify-center bg-background p-6"
-  >
+  <div class="flex flex-1 min-w-0 items-center justify-center bg-background p-6">
     <Empty class="max-w-md border-0">
       <EmptyHeader>
         <EmptyMedia variant="icon">

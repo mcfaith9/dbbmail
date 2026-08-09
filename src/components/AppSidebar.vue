@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, h, ref, onMounted } from 'vue'
-import { ArchiveX, Command, File, Inbox, Send, Trash2, Mail, MailX, SearchX } from "@lucide/vue"
+import { ArchiveX, Command, File, Inbox, Send, Trash2, Mail, MailX, SearchX,
+Folder, FolderOpen, FolderGit2, Settings, FolderTree  
+} from "@lucide/vue"
 
 import {
   Empty,
@@ -25,8 +27,8 @@ import {
 
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-
 import NavUser from '@/components/NavUser.vue'
+import MailboxQuota from '@/components/mail/MailboxQuota.vue'
 
 import type { Mailbox } from '@/types/mail'
 
@@ -39,31 +41,31 @@ import type { Mailbox } from '@/types/mail'
 const data = {
   navMain: [
     {
-      title: 'Inbox',
-      icon: Mail,
+      title: 'Mailboxes',
+      icon: FolderOpen,
     },
     {
-      title: "Drafts",
+      title: "File Manager",
       url: "#",
-      icon: File,
+      icon: FolderGit2,
       isActive: false,
     },
     {
       title: "Sent",
       url: "#",
-      icon: Send,
+      icon: FolderTree,
       isActive: false,
     },
     {
       title: "Junk",
       url: "#",
-      icon: ArchiveX,
+      icon: Folder,
       isActive: false,
     },
     {
-      title: "Trash",
+      title: "Settings",
       url: "#",
-      icon: Trash2,
+      icon: Settings,
       isActive: false,
     },
   ],
@@ -85,8 +87,6 @@ const activeItem = ref(data.navMain[0])
 
 function selectFolder(item: typeof data.navMain[number]) {
   activeItem.value = item
-
-  console.log('Selected folder:', item.title)
 }
 
 /*
@@ -153,12 +153,7 @@ async function fetchMailboxes() {
   error.value = null
 
   try {
-    console.log('[Sidebar] Fetching mailboxes...')
-
     const response = await window.hostinger.getMe()
-
-    console.log('[Sidebar] Raw mailbox response:', response)
-
     /*
      * Your backend returns:
      *
@@ -180,16 +175,6 @@ async function fetchMailboxes() {
     } else {
       mails.value = []
     }
-
-    console.log(
-      '[Sidebar] Mailboxes loaded:',
-      mails.value.length
-    )
-
-    console.log(
-      '[Sidebar] Mailboxes:',
-      mails.value
-    )
   } catch (err: any) {
     console.error(
       '[Sidebar] Failed to fetch mailboxes:',
@@ -213,11 +198,6 @@ async function fetchMailboxes() {
 */
 
 function selectMailbox(mail: Mailbox) {
-  console.log(
-    '[Sidebar] Selected mailbox:',
-    mail
-  )
-
   selectedMailbox.value = mail.address
 
   selectedMailboxResourceId.value =
@@ -418,19 +398,30 @@ onMounted(() => {
               <a
                 href="#"
                 :class="[
-                  'flex items-center gap-3 border-b p-3 text-sm last:border-b-0 transition-colors',
+                  'flex items-start gap-3 border-b p-3 text-sm last:border-b-0 transition-colors',
                   'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                   selectedMailbox === mail.address
                     ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                    : ''
+                    : '',
                 ]"
                 @click.prevent="selectMailbox(mail)"
               >
-                <Mail class="size-4 shrink-0" />
+                <!-- Mail icon -->
+                <Mail class="mt-0.5 size-4 shrink-0" />
 
-                <span class="truncate text-xs">
-                  {{ mail.address }}
-                </span>
+                <!-- Mailbox content -->
+                <div class="min-w-0 flex-1">
+                  <!-- Email -->
+                  <div class="truncate text-xs">
+                    {{ mail.address }}
+                  </div>
+
+                  <!-- Quota -->
+                  <MailboxQuota
+                    :mailbox-resource-id="mail.resourceId"
+                    :hostinger-account="mail.hostingerAccount"
+                  />
+                </div>
               </a>
             </template>
           </SidebarGroupContent>

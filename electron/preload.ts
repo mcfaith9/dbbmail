@@ -23,6 +23,10 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   // ...
 })
 
+contextBridge.exposeInMainWorld('electronAPI', {
+  getVersion: () => ipcRenderer.invoke('app:get-version'),
+})
+
 contextBridge.exposeInMainWorld('hostinger', {
   getMe: () =>
     ipcRenderer.invoke('hostinger:me'),
@@ -51,5 +55,15 @@ contextBridge.exposeInMainWorld('hostinger', {
       folder,
       uid,
       hostingerAccount
+    ),
+
+  getMailboxQuota: (
+    mailboxResourceId: string,
+    hostingerAccount: 'DMBB' | 'DBB',
+  ) =>
+    ipcRenderer.invoke(
+      'hostinger:get-mailbox-quota',
+      mailboxResourceId,
+      hostingerAccount,
     ),
 })

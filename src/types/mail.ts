@@ -39,3 +39,20 @@ export interface Mailbox {
   address: string,
   hostingerAccount: 'DMBB' | 'DBB'
 }
+
+export interface MailboxQuota {
+  resourceName: 'STORAGE' | 'MESSAGE' | string
+  usage: number
+  limit: number
+  percentage: number
+}
+
+export interface MailboxQuotaResponse {
+  data: {
+    quotas: MailboxQuota[]
+    totalUsage: number
+    totalLimit: number
+    totalPercentage: number
+    supported: boolean
+  }
+}

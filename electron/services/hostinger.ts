@@ -131,3 +131,37 @@ export async function getUserMessageContent(
 
   return response.data
 }
+
+/*
+|--------------------------------------------------------------------------
+| Get mailbox quota
+|--------------------------------------------------------------------------
+*/
+
+export async function getMailboxQuota(
+  mailboxResourceId: string,
+  hostingerAccount: HostingerAccount,
+) {
+  const response = await axios.get(
+    `${HOSTINGER_API_URL}/mailboxes/${encodeURIComponent(
+      mailboxResourceId,
+    )}/quota`,
+    {
+      headers: getHeaders(hostingerAccount),
+    },
+  )
+
+  console.log(
+    '[Hostinger] Mailbox quota:',
+    JSON.stringify(
+      {
+        mailboxResourceId,
+        hostingerAccount,
+        response: response.data,
+      },
+      null,
+      2,
+    ),
+  )
+  return response.data
+}
