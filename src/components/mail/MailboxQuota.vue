@@ -1,28 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { HardDrive, Loader2 } from '@lucide/vue'
-
-interface Quota {
-  resourceName: string
-  usage: number
-  limit: number
-  percentage: number
-}
-
-interface QuotaData {
-  quotas: Quota[]
-  totalUsage: number
-  totalLimit: number
-  totalPercentage: number
-  supported: boolean
-}
+import { mailboxService, type MailboxQuotaData } from '@/services/mailboxService'
 
 const props = defineProps<{
   mailboxResourceId: string
   hostingerAccount: 'DMBB' | 'DBB'
 }>()
 
-const quota = ref<QuotaData | null>(null)
+const quota = ref<MailboxQuotaData | null>(null)
 const loading = ref(false)
 const error = ref(false)
 
@@ -56,19 +42,20 @@ function formatStorage(bytes: number) {
   return `${(bytes / Math.pow(1000, index)).toFixed(2)} ${units[index]}`
 }
 
-async function fetchQuota() {
+async function fetchQuota(forceRefresh = false) {
   if (!props.mailboxResourceId) return
 
   loading.value = true
   error.value = false
 
   try {
-    const response = await window.hostinger.getMailboxQuota(
+    const data = await mailboxService.getMailboxQuota(
       props.mailboxResourceId,
       props.hostingerAccount,
+      forceRefresh
     )
 
-    quota.value = response?.data ?? null
+    quota.value = data
   } catch (err) {
     console.error(
       '[MailboxQuota] Failed to fetch quota:',
@@ -87,10 +74,10 @@ watch(
     () => props.mailboxResourceId,
     () => props.hostingerAccount,
   ],
-  fetchQuota,
+  () => fetchQuota(),
 )
 
-onMounted(fetchQuota)
+onMounted(() => fetchQuota())
 </script>
 
 <template>

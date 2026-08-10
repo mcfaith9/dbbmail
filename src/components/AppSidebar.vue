@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, h, ref, onMounted } from 'vue'
-import { ArchiveX, Command, File, Inbox, Send, Trash2, Mail, MailX, SearchX,
-Folder, FolderOpen, FolderGit2, Settings, FolderTree  
+import { useRoute, useRouter } from 'vue-router'
+import { Command, Mail, MailX, SearchX,
+FolderOpen, FolderGit2, Settings, RefreshCw
 } from "@lucide/vue"
 
 import {
@@ -27,10 +28,15 @@ import {
 
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Button } from '@/components/ui/button'
 import NavUser from '@/components/NavUser.vue'
 import MailboxQuota from '@/components/mail/MailboxQuota.vue'
 
 import type { Mailbox } from '@/types/mail'
+import { mailboxService } from '@/services/mailboxService'
+
+const route = useRoute()
+const router = useRouter()
 
 /*
 |--------------------------------------------------------------------------
@@ -38,55 +44,33 @@ import type { Mailbox } from '@/types/mail'
 |--------------------------------------------------------------------------
 */
 
-const data = {
-  navMain: [
-    {
-      title: 'Mailboxes',
-      icon: FolderOpen,
-    },
-    {
-      title: "File Manager",
-      url: "#",
-      icon: FolderGit2,
-      isActive: false,
-    },
-    {
-      title: "Sent",
-      url: "#",
-      icon: FolderTree,
-      isActive: false,
-    },
-    {
-      title: "Junk",
-      url: "#",
-      icon: Folder,
-      isActive: false,
-    },
-    {
-      title: "Settings",
-      url: "#",
-      icon: Settings,
-      isActive: false,
-    },
-  ],
-
-  user: {
-    name: 'DBB Admin',
-    email: 'admin@dbb.com',
-    avatar: '',
+const navMain = [
+  {
+    title: 'Mailboxes',
+    url: '/dashboard',
+    icon: FolderOpen,
   },
+  {
+    title: 'File Manager',
+    url: '/file-manager',
+    icon: FolderGit2,
+  },
+  {
+    title: 'Settings',
+    url: '/settings',
+    icon: Settings,
+  },
+]
+
+function selectNav(item: typeof navMain[number]) {
+  if (item.url && item.url !== '#') {
+    router.push(item.url)
+  }
 }
 
-/*
-|--------------------------------------------------------------------------
-| Active folder
-|--------------------------------------------------------------------------
-*/
-
-const activeItem = ref(data.navMain[0])
-
-function selectFolder(item: typeof data.navMain[number]) {
-  activeItem.value = item
+function isNavActive(item: typeof navMain[number]): boolean {
+  if (!item.url) return false
+  return route.path === item.url || route.path.startsWith(item.url + '/')
 }
 
 /*
@@ -148,43 +132,16 @@ const filteredMails = computed(() => {
 |--------------------------------------------------------------------------
 */
 
-async function fetchMailboxes() {
+async function fetchMailboxes(forceRefresh = false) {
   loading.value = true
   error.value = null
 
   try {
-    const response = await window.hostinger.getMe()
-    /*
-     * Your backend returns:
-     *
-     * {
-     *   data: [
-     *     {
-     *       resourceId: 'AC...',
-     *       address: 'user@example.com',
-     *       hostingerAccount: 'DMBB'
-     *     }
-     *   ]
-     * }
-     */
-
-    if (Array.isArray(response?.data)) {
-      mails.value = response.data
-    } else if (Array.isArray(response)) {
-      mails.value = response
-    } else {
-      mails.value = []
-    }
+    const list = await mailboxService.getMailboxes(forceRefresh)
+    mails.value = list
   } catch (err: any) {
-    console.error(
-      '[Sidebar] Failed to fetch mailboxes:',
-      err
-    )
-
-    error.value =
-      err?.message ||
-      'Failed to load mailboxes.'
-
+    console.error('[Sidebar] Failed to fetch mailboxes:', err)
+    error.value = err?.message || 'Failed to load mailboxes.'
     mails.value = []
   } finally {
     loading.value = false
@@ -280,14 +237,14 @@ onMounted(() => {
           <SidebarGroupContent class="px-1.5 md:px-0">
             <SidebarMenu>
               <SidebarMenuItem
-                v-for="item in data.navMain"
+                v-for="item in navMain"
                 :key="item.title"
               >
                 <SidebarMenuButton
                   :tooltip="h('div', { hidden: false }, item.title)"
-                  :is-active="activeItem.title === item.title"
+                  :is-active="isNavActive(item)"
                   class="px-2.5 md:px-2"
-                  @click="selectFolder(item)"
+                  @click="selectNav(item)"
                 >
                   <component :is="item.icon" />
                   <span>{{ item.title }}</span>
@@ -298,7 +255,7 @@ onMounted(() => {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <NavUser :user="data.user" />
+        <NavUser :user="{ name: 'DBB Admin', email: 'admin@dbb.com', avatar: '' }" />
       </SidebarFooter>
     </Sidebar>
 
@@ -311,13 +268,22 @@ onMounted(() => {
     >
       <SidebarHeader class="gap-3.5 border-b p-4">
         <div class="flex w-full items-center justify-between">
-          <div class="text-base font-medium text-foreground">
-            {{ activeItem.title }}
+          <div class="text-base font-semibold text-foreground flex items-center gap-2">
+            <span>Mailboxes</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              class="h-6 w-6 text-muted-foreground hover:text-foreground"
+              title="Force Refresh Mailboxes Cache"
+              @click="fetchMailboxes(true)"
+            >
+              <RefreshCw class="size-3.5" :class="{ 'animate-spin': loading }" />
+            </Button>
           </div>
 
-          <Label class="flex items-center gap-2 text-sm cursor-pointer">
+          <Label class="flex items-center gap-2 text-xs cursor-pointer text-muted-foreground">
             <span>Unreads</span>
-            <Switch v-model:checked="showOnlyUnreads" class="shadow-none" />
+            <Switch v-model:checked="showOnlyUnreads" class="shadow-none scale-90" />
           </Label>
         </div>
 

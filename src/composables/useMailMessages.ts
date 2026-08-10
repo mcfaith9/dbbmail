@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import type { Message, PaginationInfo } from '@/types/mail'
+import { cacheService } from '@/services/cacheService'
 
 export function useMailMessages() {
   const selectedMailbox = ref<string | null>(null)
@@ -42,12 +43,14 @@ export function useMailMessages() {
         )
       }
 
-      const response =
-        await window.hostinger.getMailboxMessages(
-          mailboxResourceId,
-          folder,
-          hostingerAccount
-        )
+      const cacheKey = `messages_${hostingerAccount}_${mailboxResourceId}_${folder}`
+      const settings = cacheService.getSettings()
+
+      const response = await cacheService.fetchWithCache(
+        cacheKey,
+        () => window.hostinger.getMailboxMessages(mailboxResourceId, folder, hostingerAccount),
+        settings.messagesTtlMs
+      )
 
       let list: Message[] = []
 
@@ -155,14 +158,6 @@ export function useMailMessages() {
     fetchMessages(selectedMailboxResourceId.value, pagination.value.page, pagination.value.perPage)
   }
 
-  const messageContentCache = new Map<
-    string,
-    {
-      text?: string
-      html?: string
-    }
-  >()
-
   async function fetchMessageContent(
     message: Message
   ) {
@@ -197,18 +192,16 @@ export function useMailMessages() {
       return
     }
 
-    const cacheKey =
-      `${hostingerAccount}_${mailboxResourceId}_${folder}_${uid}`
+    const cacheKey = `msg_content_${hostingerAccount}_${mailboxResourceId}_${folder}_${uid}`
+    const settings = cacheService.getSettings()
 
-    const cached =
-      messageContentCache.get(cacheKey)
+    const cached = cacheService.get<{ text: string; html: string }>(cacheKey)
 
     if (cached) {
       message.text = cached.text
       message.html = cached.html
       message.contentLoading = false
       message.contentError = null
-
       return
     }
 
@@ -216,44 +209,17 @@ export function useMailMessages() {
     message.contentError = null
 
     try {
-      console.log(
-        '[Mail] Fetching message content:',
-        {
-          mailboxResourceId,
-          hostingerAccount,
-          folder,
-          uid,
-        }
+      const response = await cacheService.fetchWithCache(
+        cacheKey,
+        () => window.hostinger.getMessageContent(mailboxResourceId, folder, uid, hostingerAccount),
+        settings.messagesTtlMs
       )
 
-      const response =
-        await window.hostinger.getMessageContent(
-          mailboxResourceId,
-          folder,
-          uid,
-          hostingerAccount
-        )
-
-      const text =
-        response?.data?.text ??
-        response?.text ??
-        ''
-
-      const html =
-        response?.data?.html ??
-        response?.html ??
-        ''
+      const text = response?.data?.text ?? response?.text ?? ''
+      const html = response?.data?.html ?? response?.html ?? ''
 
       message.text = text
       message.html = html
-
-      messageContentCache.set(
-        cacheKey,
-        {
-          text,
-          html,
-        }
-      )
     } catch (error: any) {
       console.error(
         '[Mail] Failed to fetch message content:',

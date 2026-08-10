@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue'
 import { Moon, Sun, Lock } from "@lucide/vue"
 
-import AppSidebar from "@/components/AppSidebar.vue"
 import MailMessages from "@/components/mail/MailMessages.vue"
 import MailInboxEmptyState from '@/components/mail/MailInboxEmptyState.vue'
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/composables/useTheme"
+import { useAuth } from "@/composables/useAuth"
 import { useMailMessages } from "@/composables/useMailMessages"
 
 import {
@@ -18,14 +19,10 @@ import {
 } from "@/components/ui/breadcrumb"
 
 import { Separator } from "@/components/ui/separator"
-
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
+import { SidebarTrigger } from "@/components/ui/sidebar"
 
 const { isDark, toggleTheme } = useTheme()
+const { logout } = useAuth()
 
 const {
   selectedMailbox,
@@ -36,32 +33,41 @@ const {
   messagesLoading,
   messagesError,
   handleMailboxSelected,
-  handleFolderSelected,
   handleMessageSelected,
   handlePageChange,
   handlePerPageChange,
   handleRefresh,
 } = useMailMessages()
+
+const handleCustomMailboxSelected = (e: Event) => {
+  const customEvent = e as CustomEvent<{
+    email: string
+    resourceId: string
+    hostingerAccount: 'DMBB' | 'DBB'
+  }>
+  if (customEvent.detail) {
+    handleMailboxSelected(
+      customEvent.detail.email,
+      customEvent.detail.resourceId,
+      customEvent.detail.hostingerAccount
+    )
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('mailbox-selected-event', handleCustomMailboxSelected)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('mailbox-selected-event', handleCustomMailboxSelected)
+})
 </script>
 
 <template>
-  <SidebarProvider
-    class="h-screen w-screen overflow-hidden"
-    :style="{
-      '--sidebar-width': '350px',
-    }"
-  >
-    <!-- LEFT SIDEBAR + SECOND SIDEBAR -->
-    <AppSidebar
-      @mailbox-selected="handleMailboxSelected"
-      @folder-selected="handleFolderSelected"
-    />
-
-    <!-- MAIN CONTENT -->
-    <SidebarInset class="flex flex-col h-screen overflow-hidden min-w-0">
-      <header
-        class="bg-background sticky top-0 flex shrink-0 items-center justify-between gap-2 border-b p-3.5 z-20"
-      >
+  <div class="flex flex-col h-full overflow-hidden min-w-0 bg-background">
+    <header
+      class="bg-background sticky top-0 flex shrink-0 items-center justify-between gap-2 border-b p-3.5 z-20"
+    >
         <div class="flex items-center gap-2 min-w-0 overflow-hidden">
           <SidebarTrigger class="-ml-1 shrink-0" />
 
@@ -144,6 +150,7 @@ const {
             variant="outline"
             size="sm"
             class="h-8 w-8 p-0"
+            @click="logout"
           >
             <Lock class="h-3.5 w-3.5" />
           </Button>
@@ -205,6 +212,5 @@ const {
           </div>
         </div>
       </div>
-    </SidebarInset>
-  </SidebarProvider>
+    </div>
 </template>

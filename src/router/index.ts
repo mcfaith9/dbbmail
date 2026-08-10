@@ -11,12 +11,28 @@ const router = createRouter({
     },
 
     {
-      path: '/dashboard',
-      name: 'dashboard',
-      component: () => import('@/components/mail/MailIndex.vue'),
+      path: '/',
+      component: () => import('@/views/MainLayout.vue'),
       meta: {
         requiresAuth: true,
       },
+      children: [
+        {
+          path: 'dashboard',
+          name: 'dashboard',
+          component: () => import('@/components/mail/MailIndex.vue'),
+        },
+        {
+          path: 'file-manager',
+          name: 'file-manager',
+          component: () => import('@/views/FileManagerView.vue'),
+        },
+        {
+          path: 'settings',
+          name: 'settings',
+          component: () => import('@/views/SettingsView.vue'),
+        },
+      ],
     },
 
     {
@@ -33,12 +49,15 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const { isAuthenticated } = useAuth()
 
-  if (to.meta.requiresAuth && !isAuthenticated.value) {
+  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
+  const guestOnly = to.matched.some((record) => record.meta.guestOnly)
+
+  if (requiresAuth && !isAuthenticated.value) {
     next('/pin-login')
     return
   }
 
-  if (to.meta.guestOnly && isAuthenticated.value) {
+  if (guestOnly && isAuthenticated.value) {
     next('/dashboard')
     return
   }
