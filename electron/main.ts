@@ -95,12 +95,16 @@ ipcMain.handle(
 )
 
 function createWindow() {
+  createSplash()
+  
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
     width: 1200,
     height: 800,
     minWidth: 1200,
     minHeight: 800,
+
+    show: false,
 
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
@@ -121,8 +125,23 @@ function createWindow() {
   });
 
   // Test active push message to Renderer-process.
-  win.webContents.on('did-finish-load', () => {
-    win?.webContents.send('main-process-message', (new Date).toLocaleString())
+  win.webContents.on('did-finish-load', async () => {
+    win?.webContents.send(
+      'main-process-message',
+      new Date().toLocaleString()
+    )
+
+    // Keep splash screen visible for at least 3 seconds
+    await new Promise(resolve => setTimeout(resolve, 3000))
+
+    if (win && !win.isDestroyed()) {
+      win.show()
+    }
+
+    if (splash && !splash.isDestroyed()) {
+      splash.close()
+      splash = null
+    }
   })
 
   if (VITE_DEV_SERVER_URL) {
@@ -130,6 +149,33 @@ function createWindow() {
   } else {
     // win.loadFile('dist/index.html')
     win.loadFile(path.join(RENDERER_DIST, 'index.html'))
+  }
+}
+
+let splash: BrowserWindow | null = null
+
+function createSplash() {
+  splash = new BrowserWindow({
+    width: 360,
+    height: 240,
+    frame: false,
+    resizable: false,
+    center: true,
+    alwaysOnTop: true,
+    show: true,
+
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  })
+
+  if (VITE_DEV_SERVER_URL) {
+    splash.loadURL(`${VITE_DEV_SERVER_URL}/loading.html`)
+  } else {
+    splash.loadFile(
+      path.join(RENDERER_DIST, 'loading.html')
+    )
   }
 }
 

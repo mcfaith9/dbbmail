@@ -2,7 +2,7 @@ import require$$0$1 from "fs";
 import require$$1, { resolve } from "path";
 import require$$2 from "os";
 import require$$3 from "crypto";
-import { ipcMain, app, BrowserWindow, Menu } from "electron";
+import { app, ipcMain, BrowserWindow, Menu } from "electron";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path$2 from "node:path";
@@ -18,6 +18,7 @@ import require$$1$2 from "tty";
 import require$$0$2, { EventEmitter } from "events";
 import http2 from "http2";
 import zlib from "zlib";
+import fs$2 from "node:fs";
 var commonjsGlobal = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : {};
 function getDefaultExportFromCjs(x) {
   return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
@@ -12639,14 +12640,7 @@ var _eval = EvalError;
 var range = RangeError;
 var ref = ReferenceError;
 var syntax = SyntaxError;
-var type;
-var hasRequiredType;
-function requireType() {
-  if (hasRequiredType) return type;
-  hasRequiredType = 1;
-  type = TypeError;
-  return type;
-}
+var type = TypeError;
 var uri = URIError;
 var abs$1 = Math.abs;
 var floor$1 = Math.floor;
@@ -12892,7 +12886,7 @@ function requireCallBindApplyHelpers() {
   if (hasRequiredCallBindApplyHelpers) return callBindApplyHelpers;
   hasRequiredCallBindApplyHelpers = 1;
   var bind3 = functionBind;
-  var $TypeError2 = requireType();
+  var $TypeError2 = type;
   var $call2 = requireFunctionCall();
   var $actualApply = requireActualApply();
   callBindApplyHelpers = function callBindBasic(args) {
@@ -12965,7 +12959,7 @@ var $EvalError = _eval;
 var $RangeError = range;
 var $ReferenceError = ref;
 var $SyntaxError = syntax;
-var $TypeError$1 = requireType();
+var $TypeError$1 = type;
 var $URIError = uri;
 var abs = abs$1;
 var floor = floor$1;
@@ -13296,7 +13290,7 @@ var GetIntrinsic2 = getIntrinsic;
 var $defineProperty = GetIntrinsic2("%Object.defineProperty%", true);
 var hasToStringTag = requireShams()();
 var hasOwn$1 = hasown;
-var $TypeError = requireType();
+var $TypeError = type;
 var toStringTag = hasToStringTag ? Symbol.toStringTag : null;
 var esSetTostringtag = function setToStringTag(object, value) {
   var overrideIfSet = arguments.length > 2 && !!arguments[2] && arguments[2].force;
@@ -19328,11 +19322,148 @@ const {
   mergeConfig,
   create
 } = axios;
+let memoryCache = null;
+let cacheWriteQueue = Promise.resolve();
+function getCacheDirectory() {
+  const directory = path$2.join(
+    app.getPath("userData"),
+    "Cache"
+  );
+  if (!fs$2.existsSync(directory)) {
+    fs$2.mkdirSync(directory, {
+      recursive: true
+    });
+  }
+  return directory;
+}
+function getCacheFilePath() {
+  return path$2.join(
+    getCacheDirectory(),
+    "hostinger-cache.json"
+  );
+}
+function loadCache() {
+  if (memoryCache !== null) {
+    return memoryCache;
+  }
+  const filePath = getCacheFilePath();
+  try {
+    if (!fs$2.existsSync(filePath)) {
+      memoryCache = {};
+      return memoryCache;
+    }
+    const contents = fs$2.readFileSync(
+      filePath,
+      "utf-8"
+    );
+    if (!contents.trim()) {
+      memoryCache = {};
+      return memoryCache;
+    }
+    const parsed = JSON.parse(contents);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      memoryCache = parsed;
+    } else {
+      memoryCache = {};
+    }
+    console.log(
+      `[Cache] Loaded ${Object.keys(memoryCache).length} entries`
+    );
+    return memoryCache;
+  } catch (error) {
+    console.error(
+      "[Cache] Failed to load cache:",
+      error
+    );
+    memoryCache = {};
+    return memoryCache;
+  }
+}
+function persistCache() {
+  const snapshot = JSON.stringify(
+    loadCache(),
+    null,
+    2
+  );
+  const filePath = getCacheFilePath();
+  cacheWriteQueue = cacheWriteQueue.then(async () => {
+    try {
+      const tempPath = `${filePath}.tmp`;
+      fs$2.writeFileSync(
+        tempPath,
+        snapshot,
+        "utf-8"
+      );
+      fs$2.renameSync(
+        tempPath,
+        filePath
+      );
+    } catch (error) {
+      console.error(
+        "[Cache] Failed to persist cache:",
+        error
+      );
+    }
+  }).catch((error) => {
+    console.error(
+      "[Cache] Cache write queue error:",
+      error
+    );
+  });
+}
+function getCache(key) {
+  const cache = loadCache();
+  if (!Object.prototype.hasOwnProperty.call(
+    cache,
+    key
+  )) {
+    console.log(
+      `[Cache] MISS → ${key}`
+    );
+    return null;
+  }
+  console.log(
+    `[Cache] HIT → ${key}`
+  );
+  return cache[key];
+}
+function setCache(key, data) {
+  const cache = loadCache();
+  cache[key] = data;
+  console.log(
+    `[Cache] SAVED → ${key}`
+  );
+  persistCache();
+}
+function clearCache(key) {
+  const cache = loadCache();
+  if (!Object.prototype.hasOwnProperty.call(
+    cache,
+    key
+  )) {
+    return;
+  }
+  delete cache[key];
+  console.log(
+    `[Cache] CLEARED → ${key}`
+  );
+  persistCache();
+}
 const HOSTINGER_API_URL = "https://api.mail.hostinger.com/api/v1";
+const MAILBOXES_CACHE_KEY = "hostinger:mailboxes";
+function getMeCacheKey(account) {
+  return `hostinger:me:${account}`;
+}
+function getQuotaCacheKey(account, mailboxResourceId) {
+  return `hostinger:quota:${account}:${mailboxResourceId}`;
+}
 const tokens = {
   DMBB: process.env.HOSTINGER_API_TOKEN,
   DBB: process.env.HOSTINGER_API_TOKEN_DBB
 };
+let mailboxesRequest = null;
+const meRequests = /* @__PURE__ */ new Map();
+const quotaRequests = /* @__PURE__ */ new Map();
 function getToken(account) {
   const token = tokens[account];
   if (!token) {
@@ -19348,42 +19479,135 @@ function getHeaders(account) {
     Accept: "application/json"
   };
 }
-async function getMailboxesByToken(account) {
-  const response = await axios.get(
-    `${HOSTINGER_API_URL}/me`,
-    {
-      headers: getHeaders(account)
-    }
+async function getMeByToken(account) {
+  const cacheKey = getMeCacheKey(account);
+  const cached = getCache(
+    cacheKey
   );
-  return response.data;
+  if (cached) {
+    console.log(
+      `[Hostinger] /me → CACHE ✓ ${account}`
+    );
+    return cached;
+  }
+  const existingRequest = meRequests.get(account);
+  if (existingRequest) {
+    console.log(
+      `[Hostinger] /me → WAITING FOR EXISTING REQUEST → ${account}`
+    );
+    return existingRequest;
+  }
+  const request = (async () => {
+    console.log(
+      `[Hostinger] /me → API → ${account}`
+    );
+    const response = await axios.get(
+      `${HOSTINGER_API_URL}/me`,
+      {
+        headers: getHeaders(account)
+      }
+    );
+    const data = response.data;
+    setCache(
+      cacheKey,
+      data
+    );
+    return data;
+  })();
+  meRequests.set(
+    account,
+    request
+  );
+  try {
+    return await request;
+  } finally {
+    meRequests.delete(account);
+  }
 }
-async function getMailboxes() {
-  const accounts = [
-    "DMBB",
-    "DBB"
-  ];
-  const results = await Promise.all(
-    accounts.map(async (account) => {
-      var _a;
-      const response = await getMailboxesByToken(account);
-      const mailboxes = ((_a = response == null ? void 0 : response.data) == null ? void 0 : _a.mailboxes) ?? [];
-      return mailboxes.map((mailbox) => ({
-        resourceId: mailbox.resourceId,
-        address: mailbox.address,
-        hostingerAccount: account
-      }));
-    })
-  );
-  const combined = results.flat();
-  return {
-    data: combined
-  };
+async function getMailboxes(forceRefresh = false) {
+  if (forceRefresh) {
+    console.log(
+      "[Hostinger] Mailboxes → FORCE REFRESH"
+    );
+    clearCache(
+      MAILBOXES_CACHE_KEY
+    );
+    clearCache(
+      getMeCacheKey("DMBB")
+    );
+    clearCache(
+      getMeCacheKey("DBB")
+    );
+  }
+  if (!forceRefresh) {
+    const cached = getCache(
+      MAILBOXES_CACHE_KEY
+    );
+    if (cached) {
+      console.log(
+        `[Hostinger] Mailboxes → CACHE ✓ ${cached.data.length}`
+      );
+      return cached;
+    }
+  }
+  if (mailboxesRequest && !forceRefresh) {
+    console.log(
+      "[Hostinger] Mailboxes → WAITING FOR EXISTING REQUEST"
+    );
+    return mailboxesRequest;
+  }
+  const request = (async () => {
+    console.log(
+      "[Hostinger] Mailboxes → building from /me"
+    );
+    const accounts = [
+      "DMBB",
+      "DBB"
+    ];
+    const results = await Promise.all(
+      accounts.map(
+        async (account) => {
+          var _a;
+          const response = await getMeByToken(
+            account
+          );
+          const mailboxes = ((_a = response == null ? void 0 : response.data) == null ? void 0 : _a.mailboxes) ?? [];
+          return mailboxes.map(
+            (mailbox) => ({
+              resourceId: mailbox.resourceId,
+              address: mailbox.address,
+              hostingerAccount: account
+            })
+          );
+        }
+      )
+    );
+    const result = {
+      data: results.flat()
+    };
+    setCache(
+      MAILBOXES_CACHE_KEY,
+      result
+    );
+    console.log(
+      `[Hostinger] Mailboxes → CACHE ✓ ${result.data.length}`
+    );
+    return result;
+  })();
+  mailboxesRequest = request;
+  try {
+    return await request;
+  } finally {
+    mailboxesRequest = null;
+  }
 }
 async function getUserInbox(mailboxResourceId, folder = "INBOX", hostingerAccount = "DMBB") {
   const response = await axios.get(
     `${HOSTINGER_API_URL}/mailboxes/${mailboxResourceId}/folders/${folder}/messages`,
     {
-      headers: getHeaders(hostingerAccount)
+      headers: getHeaders(
+        hostingerAccount
+      )
     }
   );
   return response.data;
@@ -19392,33 +19616,75 @@ async function getUserMessageContent(mailboxResourceId, folder, uid, hostingerAc
   const response = await axios.get(
     `${HOSTINGER_API_URL}/mailboxes/${mailboxResourceId}/folders/${folder}/messages/${uid}/text`,
     {
-      headers: getHeaders(hostingerAccount)
+      headers: getHeaders(
+        hostingerAccount
+      )
     }
   );
   return response.data;
 }
-async function getMailboxQuota(mailboxResourceId, hostingerAccount) {
-  const response = await axios.get(
-    `${HOSTINGER_API_URL}/mailboxes/${encodeURIComponent(
-      mailboxResourceId
-    )}/quota`,
-    {
-      headers: getHeaders(hostingerAccount)
+async function getMailboxQuota(mailboxResourceId, hostingerAccount, forceRefresh = false) {
+  const cacheKey = getQuotaCacheKey(
+    hostingerAccount,
+    mailboxResourceId
+  );
+  if (forceRefresh) {
+    console.log(
+      `[Hostinger] Quota → FORCE REFRESH → ${hostingerAccount}:${mailboxResourceId}`
+    );
+    clearCache(cacheKey);
+  }
+  if (!forceRefresh) {
+    const cached = getCache(
+      cacheKey
+    );
+    if (cached) {
+      console.log(
+        `[Hostinger] Quota → CACHE ✓ ${hostingerAccount}:${mailboxResourceId}`
+      );
+      return cached;
     }
-  );
-  console.log(
-    "[Hostinger] Mailbox quota:",
-    JSON.stringify(
+  }
+  if (quotaRequests.has(cacheKey) && !forceRefresh) {
+    console.log(
+      `[Hostinger] Quota → WAITING → ${hostingerAccount}:${mailboxResourceId}`
+    );
+    return quotaRequests.get(
+      cacheKey
+    );
+  }
+  const request = (async () => {
+    console.log(
+      `[Hostinger] Quota → API → ${hostingerAccount}`
+    );
+    const response = await axios.get(
+      `${HOSTINGER_API_URL}/mailboxes/${encodeURIComponent(
+        mailboxResourceId
+      )}/quota`,
       {
-        mailboxResourceId,
-        hostingerAccount,
-        response: response.data
-      },
-      null,
-      2
-    )
+        headers: getHeaders(
+          hostingerAccount
+        )
+      }
+    );
+    const data = response.data;
+    setCache(
+      cacheKey,
+      data
+    );
+    return data;
+  })();
+  quotaRequests.set(
+    cacheKey,
+    request
   );
-  return response.data;
+  try {
+    return await request;
+  } finally {
+    quotaRequests.delete(
+      cacheKey
+    );
+  }
 }
 createRequire(import.meta.url);
 const __dirname$1 = path$2.dirname(fileURLToPath(import.meta.url));
@@ -19433,8 +19699,8 @@ ipcMain.handle("app:get-version", () => {
 });
 ipcMain.handle(
   "hostinger:me",
-  async () => {
-    return await getMailboxes();
+  async (_event, forceRefresh = false) => {
+    return await getMailboxes(forceRefresh);
   }
 );
 ipcMain.handle(
@@ -19460,20 +19726,23 @@ ipcMain.handle(
 );
 ipcMain.handle(
   "hostinger:get-mailbox-quota",
-  async (_event, mailboxResourceId, hostingerAccount) => {
+  async (_event, mailboxResourceId, hostingerAccount, forceRefresh = false) => {
     return await getMailboxQuota(
       mailboxResourceId,
-      hostingerAccount
+      hostingerAccount,
+      forceRefresh
     );
   }
 );
 function createWindow() {
+  createSplash();
   win = new BrowserWindow({
     icon: path$2.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     width: 1200,
     height: 800,
     minWidth: 1200,
     minHeight: 800,
+    show: false,
     webPreferences: {
       preload: path$2.join(__dirname$1, "preload.mjs")
     }
@@ -19485,13 +19754,47 @@ function createWindow() {
       win.webContents.toggleDevTools();
     }
   });
-  win.webContents.on("did-finish-load", () => {
-    win == null ? void 0 : win.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
+  win.webContents.on("did-finish-load", async () => {
+    win == null ? void 0 : win.webContents.send(
+      "main-process-message",
+      (/* @__PURE__ */ new Date()).toLocaleString()
+    );
+    await new Promise((resolve2) => setTimeout(resolve2, 3e3));
+    if (win && !win.isDestroyed()) {
+      win.show();
+    }
+    if (splash && !splash.isDestroyed()) {
+      splash.close();
+      splash = null;
+    }
   });
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
   } else {
     win.loadFile(path$2.join(RENDERER_DIST, "index.html"));
+  }
+}
+let splash = null;
+function createSplash() {
+  splash = new BrowserWindow({
+    width: 360,
+    height: 240,
+    frame: false,
+    resizable: false,
+    center: true,
+    alwaysOnTop: true,
+    show: true,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+  if (VITE_DEV_SERVER_URL) {
+    splash.loadURL(`${VITE_DEV_SERVER_URL}/loading.html`);
+  } else {
+    splash.loadFile(
+      path$2.join(RENDERER_DIST, "loading.html")
+    );
   }
 }
 app.on("window-all-closed", () => {
