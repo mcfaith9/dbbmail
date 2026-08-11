@@ -7,6 +7,7 @@ import {
   Moon,
   Settings,
   Sun,
+  ShieldUser
 } from "@lucide/vue"
 
 import {
@@ -59,7 +60,7 @@ const { isMobile } = useSidebar()
             <Avatar class="h-8 w-8 rounded-lg">
               <AvatarImage :src="user.avatar" :alt="user.name" />
               <AvatarFallback class="rounded-lg">
-                DBB
+                <ShieldUser />
               </AvatarFallback>
             </Avatar>
             <div class="grid flex-1 text-left text-sm leading-tight">
@@ -79,8 +80,8 @@ const { isMobile } = useSidebar()
             <div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
               <Avatar class="h-8 w-8 rounded-lg">
                 <AvatarImage :src="user.avatar" :alt="user.name" />
-                <AvatarFallback class="rounded-lg">
-                  DBB
+                <AvatarFallback class="rounded-2xl">
+                  <ShieldUser />
                 </AvatarFallback>
               </Avatar>
               <div class="grid flex-1 text-left text-sm leading-tight">
@@ -92,7 +93,7 @@ const { isMobile } = useSidebar()
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
             <DropdownMenuItem @click="toggleTheme">
-              <Sun v-if="isDark" class="size-4 mr-2 text-amber-400" />
+              <Sun v-if="isDark" class="size-4 text-amber-400" />
               <Moon v-else class="size-4" />
               <span>
                 {{ isDark ? 'Light Mode' : 'Dark Mode' }}
@@ -117,7 +118,7 @@ const { isMobile } = useSidebar()
           <DropdownMenuSeparator />
           <DropdownMenuItem @click="logout">
             <LogOut />
-            Log out
+            Lock
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

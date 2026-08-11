@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
-import { Moon, Sun, Lock } from "@lucide/vue"
+import { Moon, Sun } from "@lucide/vue"
 
 import MailMessages from "@/components/mail/MailMessages.vue"
 import MailInboxEmptyState from '@/components/mail/MailInboxEmptyState.vue'
@@ -144,17 +144,6 @@ onUnmounted(() => {
               class="h-3.5 w-3.5"
             />
           </Button>
-
-          <!-- Lock -->
-          <Button
-            variant="outline"
-            size="sm"
-            class="h-8 w-8 p-0"
-            @click="logout"
-          >
-            <Lock class="h-3.5 w-3.5" />
-          </Button>
-
         </div>
       </header>
 

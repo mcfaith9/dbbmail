@@ -156,7 +156,6 @@ onMounted(() => {
         <Button variant="outline" size="sm" class="h-8 gap-1.5 text-xs" @click="toggleTheme">
           <Sun v-if="isDark" class="size-3.5 text-amber-400" />
           <Moon v-else class="size-3.5" />
-          <span>{{ isDark ? 'Light' : 'Dark' }} Mode</span>
         </Button>
       </div>
     </header>

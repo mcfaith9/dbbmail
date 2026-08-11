@@ -62,20 +62,23 @@ async function handleSubmit() {
       <FieldGroup>
 
         <!-- Header -->
-        <div class="flex flex-col items-center gap-1 text-center">
-          <h1 class="text-2xl font-bold">
+        <div class="flex flex-col items-center text-center">
+          <h1 class="text-2xl font-bold tracking-tight">
             Welcome back
           </h1>
 
-          <p class="text-muted-foreground text-sm text-balance">
-            Enter your 6-digit PIN to continue.
+          <p class="mt-2 text-sm text-muted-foreground">
+            Access your DBB Industrial systems.
           </p>
         </div>
 
         <!-- PIN -->
-        <Field>
-          <FieldLabel for="pin" class="sr-only">
-            PIN
+        <Field class="mt-2">
+          <FieldLabel
+            for="pin"
+            class="mb-3 text-center text-sm font-medium"
+          >
+            Enter your PIN
           </FieldLabel>
 
           <InputOTP
@@ -86,6 +89,7 @@ async function handleSubmit() {
             inputmode="numeric"
             pattern="[0-9]*"
             required
+            class="justify-center"
           >
             <InputOTPGroup
               class="gap-2 *:data-[slot=input-otp-slot]:rounded-md *:data-[slot=input-otp-slot]:border"
@@ -113,14 +117,14 @@ async function handleSubmit() {
             </InputOTPGroup>
           </InputOTP>
 
-          <FieldDescription class="text-center">
-            Enter your 6-digit PIN.
+          <FieldDescription class="mt-3 text-center text-xs">
+            Enter your 6-digit PIN to continue.
           </FieldDescription>
 
           <!-- Error -->
           <p
             v-if="error"
-            class="text-destructive text-center text-sm"
+            class="mt-2 text-center text-sm text-destructive"
           >
             {{ error }}
           </p>
@@ -132,8 +136,13 @@ async function handleSubmit() {
           class="w-full"
           :disabled="isLoading || pin.length !== 6"
         >
-          {{ isLoading ? 'Unlocking...' : 'Unlock' }}
+          {{ isLoading ? 'Verifying...' : 'Access System' }}
         </Button>
+
+        <!-- Footer -->
+        <p class="text-center text-xs text-muted-foreground/60">
+          DBB Industrial • Internal Use Only
+        </p>
 
       </FieldGroup>
     </form>

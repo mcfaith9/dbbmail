@@ -5,15 +5,15 @@ defineProps<{
 </script>
 
 <template>
-  <div class="fixed top-18 right-4 z-50 flex flex-col items-end text-right pointer-events-none select-none"> 
+  <div class="fixed -bottom-0 right-0 z-50 flex flex-col items-end text-left pointer-events-none select-none bg-white"> 
     <div class="flex flex-col">
-      <span class="text-xs font-medium">
-        v.{{ version }}
+      <span class="text-[10px] font-medium dark:text-black">
+        v.{{ version }} DBB APP
       </span>
 
-      <span class="text-[11px] text-muted-foreground">
-        DBB Mail App
-      </span>
+      <!-- <span class="text-[11px] text-muted-foreground">
+        DBB APP
+      </span> -->
     </div>
   </div>
 </template>
