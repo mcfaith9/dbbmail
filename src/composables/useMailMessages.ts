@@ -87,6 +87,11 @@ export function useMailMessages() {
         }
       }
 
+      list.forEach((msg) => {
+        msg.mailboxResourceId = mailboxResourceId
+        msg.hostingerAccount = hostingerAccount
+      })
+
       messages.value = list
       pagination.value = pag
     } catch (err: any) {

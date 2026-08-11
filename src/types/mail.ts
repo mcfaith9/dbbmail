@@ -4,6 +4,7 @@ export interface Attachment {
   sizeBytes?: number
   inline?: boolean
   filename?: string
+  contentId?: string
 }
 
 export interface Message {
@@ -20,11 +21,13 @@ export interface Message {
   snippet?: string
   body?: string
   attachments?: Attachment[]
-  size?: number,
+  size?: number
   text?: string
   html?: string
   contentLoading?: boolean
   contentError?: string | null
+  mailboxResourceId?: string
+  hostingerAccount?: 'DMBB' | 'DBB'
 }
 
 export interface PaginationInfo {

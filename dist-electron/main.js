@@ -19399,17 +19399,15 @@ async function getMailboxQuota(mailboxResourceId, hostingerAccount) {
       headers: getHeaders(hostingerAccount)
     }
   );
-  console.log(
-    "[Hostinger] Mailbox quota:",
-    JSON.stringify(
-      {
-        mailboxResourceId,
-        hostingerAccount,
-        response: response.data
-      },
-      null,
-      2
-    )
+  return response.data;
+}
+async function getMessageAttachment(mailboxResourceId, folder = "INBOX", uid, attachmentId, hostingerAccount = "DMBB") {
+  const response = await axios.get(
+    `${HOSTINGER_API_URL}/mailboxes/${mailboxResourceId}/folders/${folder}/messages/${uid}/attachments/${encodeURIComponent(attachmentId)}`,
+    {
+      headers: getHeaders(hostingerAccount),
+      responseType: "arraybuffer"
+    }
   );
   return response.data;
 }
@@ -19456,6 +19454,18 @@ ipcMain.handle(
   async (_event, mailboxResourceId, hostingerAccount) => {
     return await getMailboxQuota(
       mailboxResourceId,
+      hostingerAccount
+    );
+  }
+);
+ipcMain.handle(
+  "hostinger:getmessageattachment",
+  async (_event, mailboxResourceId, folder, uid, attachmentId, hostingerAccount) => {
+    return await getMessageAttachment(
+      mailboxResourceId,
+      folder,
+      uid,
+      attachmentId,
       hostingerAccount
     );
   }

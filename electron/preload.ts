@@ -66,4 +66,20 @@ contextBridge.exposeInMainWorld('hostinger', {
       mailboxResourceId,
       hostingerAccount,
     ),
+
+  getMessageAttachment: (
+    mailboxResourceId: string,
+    folder: string,
+    uid: number,
+    attachmentId: string,
+    hostingerAccount: 'DMBB' | 'DBB'
+  ) =>
+    ipcRenderer.invoke(
+      'hostinger:getmessageattachment',
+      mailboxResourceId,
+      folder,
+      uid,
+      attachmentId,
+      hostingerAccount
+    ),
 })

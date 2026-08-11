@@ -42,5 +42,13 @@ electron.contextBridge.exposeInMainWorld("hostinger", {
     "hostinger:get-mailbox-quota",
     mailboxResourceId,
     hostingerAccount
+  ),
+  getMessageAttachment: (mailboxResourceId, folder, uid, attachmentId, hostingerAccount) => electron.ipcRenderer.invoke(
+    "hostinger:getmessageattachment",
+    mailboxResourceId,
+    folder,
+    uid,
+    attachmentId,
+    hostingerAccount
   )
 });

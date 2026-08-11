@@ -151,17 +151,29 @@ export async function getMailboxQuota(
     },
   )
 
-  console.log(
-    '[Hostinger] Mailbox quota:',
-    JSON.stringify(
-      {
-        mailboxResourceId,
-        hostingerAccount,
-        response: response.data,
-      },
-      null,
-      2,
-    ),
+  return response.data
+}
+
+/*
+|--------------------------------------------------------------------------
+| Get message attachment
+|--------------------------------------------------------------------------
+*/
+
+export async function getMessageAttachment(
+  mailboxResourceId: string,
+  folder: string = 'INBOX',
+  uid: number,
+  attachmentId: string,
+  hostingerAccount: HostingerAccount = 'DMBB'
+) {
+  const response = await axios.get(
+    `${HOSTINGER_API_URL}/mailboxes/${mailboxResourceId}/folders/${folder}/messages/${uid}/attachments/${encodeURIComponent(attachmentId)}`,
+    {
+      headers: getHeaders(hostingerAccount),
+      responseType: 'arraybuffer',
+    }
   )
+
   return response.data
 }

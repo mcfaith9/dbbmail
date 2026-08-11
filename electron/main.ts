@@ -9,6 +9,7 @@ import {
   getUserInbox,
   getUserMessageContent,
   getMailboxQuota,
+  getMessageAttachment,
 } from './services/hostinger'
 
 const require = createRequire(import.meta.url)
@@ -92,6 +93,26 @@ ipcMain.handle(
       hostingerAccount,
     )
   },
+)
+
+ipcMain.handle(
+  'hostinger:getmessageattachment',
+  async (
+    _event,
+    mailboxResourceId: string,
+    folder: string,
+    uid: number,
+    attachmentId: string,
+    hostingerAccount: 'DMBB' | 'DBB'
+  ) => {
+    return await getMessageAttachment(
+      mailboxResourceId,
+      folder,
+      uid,
+      attachmentId,
+      hostingerAccount
+    )
+  }
 )
 
 function createWindow() {

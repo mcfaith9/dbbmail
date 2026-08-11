@@ -91,6 +91,7 @@ const sanitizedHtml = computed(() => {
     <MailAttachments
       v-if="activeMessage.attachments && activeMessage.attachments.length > 0"
       :attachments="activeMessage.attachments"
+      :message="activeMessage"
     />
 
     <!-- Email Content Body -->
