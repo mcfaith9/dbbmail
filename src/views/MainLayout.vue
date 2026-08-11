@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import AppSidebar from '@/components/AppSidebar.vue'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
-import { useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
+
+const isDashboard = computed(() => {
+  return route.path === '/dashboard' || route.name === 'dashboard'
+})
 
 function handleMailboxSelected(email: string, resourceId: string, hostingerAccount: 'DMBB' | 'DBB') {
   // If not on dashboard, navigate to dashboard first
@@ -23,7 +29,7 @@ function handleMailboxSelected(email: string, resourceId: string, hostingerAccou
   <SidebarProvider
     class="h-screen w-screen overflow-hidden bg-background text-foreground"
     :style="{
-      '--sidebar-width': '350px',
+      '--sidebar-width': isDashboard ? '350px' : 'calc(var(--sidebar-width-icon) + 1px)',
     }"
   >
     <!-- PERSISTENT SIDEBAR -->

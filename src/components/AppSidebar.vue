@@ -37,6 +37,11 @@ import type { Mailbox } from '@/types/mail'
 import { mailboxService } from '@/services/mailboxService'
 
 const route = useRoute()
+const router = useRouter()
+
+const isDashboard = computed(() => {
+  return route.path === '/dashboard' || route.name === 'dashboard'
+})
 
 const props = withDefaults(defineProps<SidebarProps>(), {
   collapsible: "icon",
@@ -270,6 +275,7 @@ onMounted(() => {
     <!--  We disable collapsible and let it fill remaining space -->
     <!-- Second sidebar -->
     <Sidebar
+      v-if="isDashboard"
       collapsible="none"
       class="hidden flex-1 md:flex"
     >
