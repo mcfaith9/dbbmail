@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { SidebarProps } from "@/components/ui/sidebar"
 import { computed, h, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Command, Mail, MailX, SearchX,
@@ -36,8 +37,10 @@ import type { Mailbox } from '@/types/mail'
 import { mailboxService } from '@/services/mailboxService'
 
 const route = useRoute()
-const router = useRouter()
 
+const props = withDefaults(defineProps<SidebarProps>(), {
+  collapsible: "icon",
+})
 /*
 |--------------------------------------------------------------------------
 | Navigation
@@ -206,7 +209,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <Sidebar class="overflow-hidden *:data-[sidebar=sidebar]:flex-row">
+  <Sidebar
+    class="overflow-hidden *:data-[sidebar=sidebar]:flex-row"
+    v-bind="props"
+  >
     <!-- This is the first sidebar -->
     <!-- We disable collapsible and adjust width to icon. -->
     <!-- This will make the sidebar appear as icons. -->
@@ -232,6 +238,7 @@ onMounted(() => {
         </SidebarMenu>
       </SidebarHeader>
 
+      <!-- Sidebar Main -->
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent class="px-1.5 md:px-0">
