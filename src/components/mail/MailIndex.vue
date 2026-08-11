@@ -6,7 +6,6 @@ import MailMessages from "@/components/mail/MailMessages.vue"
 import MailInboxEmptyState from '@/components/mail/MailInboxEmptyState.vue'
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/composables/useTheme"
-import { useAuth } from "@/composables/useAuth"
 import { useMailMessages } from "@/composables/useMailMessages"
 
 import {
@@ -22,7 +21,6 @@ import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 
 const { isDark, toggleTheme } = useTheme()
-const { logout } = useAuth()
 
 const {
   selectedMailbox,

@@ -1,10 +1,27 @@
 export {}
 
+export interface UpdateStatusData {
+  status: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error' | 'dev'
+  info?: any
+  progress?: {
+    bytesPerSecond: number
+    percent: number
+    total: number
+    transferred: number
+  }
+  error?: string
+  message?: string
+}
+
 declare global {
   interface Window {
     ipcRenderer?: any
     electronAPI?: {
       getVersion: () => Promise<string>
+      checkForUpdates: () => Promise<any>
+      downloadUpdate: () => Promise<any>
+      quitAndInstall: () => void
+      onUpdateStatus: (callback: (data: UpdateStatusData) => void) => () => void
     }
     hostinger?: {
       getMe: () => Promise<any>

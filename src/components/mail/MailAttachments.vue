@@ -8,8 +8,6 @@ import {
   Image as ImageIcon,
   FileCode,
   File,
-  X,
-  ExternalLink,
 } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'

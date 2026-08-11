@@ -2,7 +2,7 @@
 import type { SidebarProps } from "@/components/ui/sidebar"
 import { computed, h, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Command, Mail, MailX, SearchX,
+import { Mail, MailX, SearchX,
 FolderOpen, FolderGit2, Settings, RefreshCw
 } from "@lucide/vue"
 

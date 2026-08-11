@@ -1,7 +1,7 @@
 import 'dotenv/config'
 
-import { app, BrowserWindow, ipcMain, Menu, globalShortcut } from 'electron'
-import { createRequire } from 'node:module'
+import { app, BrowserWindow, ipcMain, Menu } from 'electron'
+import { autoUpdater } from 'electron-updater'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import {
@@ -12,8 +12,42 @@ import {
   getMessageAttachment,
 } from './services/hostinger'
 
-const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// Configure Auto Updater
+autoUpdater.autoDownload = false
+autoUpdater.autoInstallOnAppQuit = true
+
+function setupAutoUpdater() {
+  autoUpdater.on('checking-for-update', () => {
+    win?.webContents.send('updater:status', { status: 'checking' })
+  })
+
+  autoUpdater.on('update-available', (info) => {
+    win?.webContents.send('updater:status', { status: 'available', info })
+  })
+
+  autoUpdater.on('update-not-available', (info) => {
+    win?.webContents.send('updater:status', { status: 'not-available', info })
+  })
+
+  autoUpdater.on('download-progress', (progress) => {
+    win?.webContents.send('updater:status', { status: 'downloading', progress })
+  })
+
+  autoUpdater.on('update-downloaded', (info) => {
+    win?.webContents.send('updater:status', { status: 'downloaded', info })
+  })
+
+  autoUpdater.on('error', (err) => {
+    win?.webContents.send('updater:status', {
+      status: 'error',
+      error: err?.message || String(err),
+    })
+  })
+}
+
+setupAutoUpdater()
 
 // The built directory structure
 //
@@ -37,6 +71,29 @@ let win: BrowserWindow | null
 
 ipcMain.handle('app:get-version', () => {
   return app.getVersion()
+})
+
+// Updater IPC Handlers
+ipcMain.handle('updater:check', async () => {
+  if (!app.isPackaged) {
+    return { status: 'dev', message: 'Auto-update is disabled in development mode' }
+  }
+  try {
+    return await autoUpdater.checkForUpdates()
+  } catch (err: any) {
+    return { status: 'error', error: err?.message || String(err) }
+  }
+})
+
+ipcMain.handle('updater:download', async () => {
+  if (!app.isPackaged) {
+    return { status: 'dev' }
+  }
+  return await autoUpdater.downloadUpdate()
+})
+
+ipcMain.handle('updater:quit-and-install', () => {
+  autoUpdater.quitAndInstall()
 })
 
 // Hostinger IPC
@@ -119,7 +176,7 @@ function createWindow() {
   createSplash()
   
   win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+    icon: path.join(process.env.VITE_PUBLIC, 'icon.ico'),
     width: 1200,
     height: 800,
     minWidth: 1200,
@@ -141,7 +198,7 @@ function createWindow() {
       input.key.toLowerCase() === 'i'
     ) {
       event.preventDefault();
-      win.webContents.toggleDevTools();
+      win?.webContents.toggleDevTools();
     }
   });
 
@@ -162,6 +219,14 @@ function createWindow() {
     if (splash && !splash.isDestroyed()) {
       splash.close()
       splash = null
+    }
+
+    if (app.isPackaged) {
+      setTimeout(() => {
+        autoUpdater.checkForUpdates().catch((err) => {
+          console.warn('[AutoUpdater] Startup update check failed:', err)
+        })
+      }, 4000)
     }
   })
 

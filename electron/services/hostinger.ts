@@ -6,8 +6,8 @@ const HOSTINGER_API_URL =
 type HostingerAccount = 'DMBB' | 'DBB'
 
 const tokens: Record<HostingerAccount, string | undefined> = {
-  DMBB: process.env.HOSTINGER_API_TOKEN,
-  DBB: process.env.HOSTINGER_API_TOKEN_DBB,
+  DMBB: 'dc8b477effe663b4d309e98dcccec8646dae3653ad4f86eb72cefe028ec375e0',
+  DBB: '99ee5c9718ecd052f48aca1dbfd346893351b73645561c4210cab654b1f07dd7',
 }
 
 function getToken(account: HostingerAccount) {

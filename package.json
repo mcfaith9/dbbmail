@@ -1,6 +1,8 @@
 {
   "name": "dbbmail",
   "private": true,
+  "description": "DBBMail desktop application",
+  "author": "Marc Louie Cabigas",
   "version": "0.0.1",
   "type": "module",
   "scripts": {
@@ -17,6 +19,7 @@
     "clsx": "^2.1.1",
     "dompurify": "^3.4.13",
     "dotenv": "^17.4.2",
+    "electron-updater": "^6.8.9",
     "hostinger-mail-api-sdk": "^1.17.2",
     "reka-ui": "^2.10.1",
     "tailwind-merge": "^3.6.0",

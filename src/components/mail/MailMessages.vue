@@ -7,7 +7,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Paperclip } from '@lucide/vue'
 import type { Message, PaginationInfo } from '@/types/mail'
 import { useMailFormatting } from '@/composables/useMailFormatting'
 

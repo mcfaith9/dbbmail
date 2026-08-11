@@ -43,12 +43,16 @@ export function useMailMessages() {
         )
       }
 
+      if (!window.hostinger) {
+        throw new Error('Hostinger service is not available')
+      }
+
       const cacheKey = `messages_${hostingerAccount}_${mailboxResourceId}_${folder}`
       const settings = cacheService.getSettings()
 
       const response = await cacheService.fetchWithCache(
         cacheKey,
-        () => window.hostinger.getMailboxMessages(mailboxResourceId, folder, hostingerAccount),
+        () => window.hostinger!.getMailboxMessages(mailboxResourceId, folder, hostingerAccount),
         settings.messagesTtlMs
       )
 
@@ -182,7 +186,8 @@ export function useMailMessages() {
     if (
       !mailboxResourceId ||
       !hostingerAccount ||
-      !uid
+      !uid ||
+      !window.hostinger
     ) {
       console.warn(
         'Cannot fetch message content:',
@@ -216,7 +221,7 @@ export function useMailMessages() {
     try {
       const response = await cacheService.fetchWithCache(
         cacheKey,
-        () => window.hostinger.getMessageContent(mailboxResourceId, folder, uid, hostingerAccount),
+        () => window.hostinger!.getMessageContent(mailboxResourceId, folder, uid, hostingerAccount),
         settings.messagesTtlMs
       )
 

@@ -3,14 +3,14 @@ import axios from 'axios'
 if (typeof window !== 'undefined') {
   if (!window.ipcRenderer) {
     window.ipcRenderer = {
-      on: () => {},
-      off: () => {},
+      on: () => window.ipcRenderer,
+      off: () => window.ipcRenderer,
       send: () => {},
       invoke: async (channel: string) => {
         if (channel === 'app:get-version') return '1.0.0'
         return null
       },
-    }
+    } as any
   }
 
   if (!window.electronAPI) {
@@ -23,6 +23,10 @@ if (typeof window !== 'undefined') {
           return '1.0.0'
         }
       },
+      checkForUpdates: async () => ({ status: 'dev', message: 'Not available in web preview' }),
+      downloadUpdate: async () => {},
+      quitAndInstall: () => {},
+      onUpdateStatus: () => () => {},
     }
   }
 

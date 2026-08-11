@@ -25,6 +25,16 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getVersion: () => ipcRenderer.invoke('app:get-version'),
+  checkForUpdates: () => ipcRenderer.invoke('updater:check'),
+  downloadUpdate: () => ipcRenderer.invoke('updater:download'),
+  quitAndInstall: () => ipcRenderer.invoke('updater:quit-and-install'),
+  onUpdateStatus: (callback: (data: any) => void) => {
+    const subscription = (_event: any, data: any) => callback(data)
+    ipcRenderer.on('updater:status', subscription)
+    return () => {
+      ipcRenderer.off('updater:status', subscription)
+    }
+  },
 })
 
 contextBridge.exposeInMainWorld('hostinger', {

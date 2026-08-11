@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
   Database,
   RefreshCw,
@@ -13,6 +13,10 @@ import {
   CheckCircle2,
   Sliders,
   Sparkles,
+  Download,
+  ArrowUpCircle,
+  FolderGit2,
+  Info,
 } from '@lucide/vue'
 
 import { Button } from '@/components/ui/button'
@@ -28,6 +32,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar'
 import { useCache } from '@/composables/useCache'
 import { useTheme } from '@/composables/useTheme'
 import { mailboxService } from '@/services/mailboxService'
+import type { UpdateStatusData } from '@/types/electron'
 
 const {
   cacheSettings,
@@ -47,11 +52,44 @@ const searchQuery = ref('')
 const notificationMessage = ref<string | null>(null)
 const refreshing = ref(false)
 
+// Updater state
+const appVersion = ref('1.0.0')
+const updaterStatus = ref<'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error' | 'dev'>('idle')
+const updaterProgress = ref(0)
+const updaterInfo = ref<any>(null)
+const updaterError = ref('')
+
+let updaterCleanup: (() => void) | null = null
+
 const showToast = (msg: string) => {
   notificationMessage.value = msg
   setTimeout(() => {
     notificationMessage.value = null
   }, 3500)
+}
+
+const handleCheckForUpdates = async () => {
+  updaterStatus.value = 'checking'
+  updaterError.value = ''
+  try {
+    const res = await window.electronAPI?.checkForUpdates()
+    if (res?.status === 'dev') {
+      updaterStatus.value = 'dev'
+      updaterError.value = res.message || 'Auto-updates are disabled in development mode'
+    }
+  } catch (err: any) {
+    updaterStatus.value = 'error'
+    updaterError.value = err?.message || 'Failed to check for updates'
+  }
+}
+
+const handleDownloadUpdate = async () => {
+  updaterStatus.value = 'downloading'
+  await window.electronAPI?.downloadUpdate()
+}
+
+const handleQuitAndInstall = () => {
+  window.electronAPI?.quitAndInstall()
 }
 
 const filteredEntries = computed(() => {
@@ -127,8 +165,23 @@ const handleDeleteEntry = (key: string) => {
   showToast(`Item "${key}" deleted from cache`)
 }
 
-onMounted(() => {
+onMounted(async () => {
   refreshStats()
+  if (window.electronAPI?.getVersion) {
+    appVersion.value = await window.electronAPI.getVersion()
+  }
+  if (window.electronAPI?.onUpdateStatus) {
+    updaterCleanup = window.electronAPI.onUpdateStatus((data: UpdateStatusData) => {
+      updaterStatus.value = data.status
+      if (data.info) updaterInfo.value = data.info
+      if (data.progress) updaterProgress.value = Math.round(data.progress.percent)
+      if (data.error) updaterError.value = data.error
+    })
+  }
+})
+
+onUnmounted(() => {
+  if (updaterCleanup) updaterCleanup()
 })
 </script>
 
@@ -416,6 +469,110 @@ onMounted(() => {
               </TableRow>
             </TableBody>
           </Table>
+        </div>
+      </div>
+
+      <!-- Software Auto-Updates Card -->
+      <div class="p-5 rounded-xl border bg-card text-card-foreground shadow-xs space-y-4">
+        <div class="flex items-center justify-between pb-2 border-b">
+          <div class="flex items-center gap-2">
+            <FolderGit2 class="size-4 text-primary" />
+            <h2 class="text-sm font-semibold">Software Updates (GitHub Releases)</h2>
+            <Badge variant="outline" class="text-[10px] font-mono">v{{ appVersion }}</Badge>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            class="h-8 gap-1.5 text-xs"
+            :disabled="updaterStatus === 'checking' || updaterStatus === 'downloading'"
+            @click="handleCheckForUpdates"
+          >
+            <RefreshCw class="size-3.5" :class="{ 'animate-spin': updaterStatus === 'checking' }" />
+            <span>Check for Updates</span>
+          </Button>
+        </div>
+
+        <div class="p-4 rounded-lg border bg-background space-y-3">
+          <div class="flex items-start justify-between gap-3">
+            <div class="space-y-1">
+              <div class="text-xs font-semibold flex items-center gap-2">
+                <span>Installed Application Version:</span>
+                <span class="font-mono text-primary font-bold">v{{ appVersion }}</span>
+              </div>
+
+              <!-- Status Feedback Messages -->
+              <div v-if="updaterStatus === 'checking'" class="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
+                <RefreshCw class="size-3.5 animate-spin text-primary" />
+                <span>Checking GitHub Releases for new updates...</span>
+              </div>
+
+              <div v-else-if="updaterStatus === 'available'" class="text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1.5 mt-1">
+                <Sparkles class="size-3.5" />
+                <span>New Version {{ updaterInfo?.version ? `v${updaterInfo.version}` : '' }} is available on GitHub!</span>
+              </div>
+
+              <div v-else-if="updaterStatus === 'not-available'" class="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5 mt-1">
+                <CheckCircle2 class="size-3.5" />
+                <span>You are running the latest version.</span>
+              </div>
+
+              <div v-else-if="updaterStatus === 'downloading'" class="text-xs text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1.5 mt-1">
+                <Download class="size-3.5 animate-bounce" />
+                <span>Downloading update package ({{ updaterProgress }}%)...</span>
+              </div>
+
+              <div v-else-if="updaterStatus === 'downloaded'" class="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5 mt-1">
+                <CheckCircle2 class="size-3.5" />
+                <span>Update package downloaded! Ready to install.</span>
+              </div>
+
+              <div v-else-if="updaterStatus === 'dev'" class="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
+                <Info class="size-3.5" />
+                <span>Auto-update checking is inactive in development mode. Packaged builds will automatically fetch updates from GitHub Releases.</span>
+              </div>
+
+              <div v-else-if="updaterStatus === 'error'" class="text-xs text-destructive flex items-center gap-1.5 mt-1">
+                <Info class="size-3.5" />
+                <span>Update status: {{ updaterError || 'No new updates or repository not configured.' }}</span>
+              </div>
+
+              <div v-else class="text-xs text-muted-foreground mt-1">
+                Automatic updates are checked on application launch in packaged production builds.
+              </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="flex items-center gap-2 shrink-0">
+              <Button
+                v-if="updaterStatus === 'available'"
+                size="sm"
+                class="h-8 gap-1.5 text-xs"
+                @click="handleDownloadUpdate"
+              >
+                <Download class="size-3.5" />
+                <span>Download Update</span>
+              </Button>
+
+              <Button
+                v-if="updaterStatus === 'downloaded'"
+                size="sm"
+                class="h-8 gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                @click="handleQuitAndInstall"
+              >
+                <ArrowUpCircle class="size-3.5" />
+                <span>Restart & Install</span>
+              </Button>
+            </div>
+          </div>
+
+          <!-- Progress Bar when downloading -->
+          <div v-if="updaterStatus === 'downloading'" class="space-y-1 pt-1">
+            <div class="h-2 w-full bg-muted rounded-full overflow-hidden">
+              <div class="h-full bg-primary transition-all duration-300" :style="{ width: `${updaterProgress}%` }" />
+            </div>
+            <div class="text-[10px] text-right font-mono text-muted-foreground">{{ updaterProgress }}% downloaded</div>
+          </div>
         </div>
       </div>
 

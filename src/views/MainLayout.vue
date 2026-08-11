@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppSidebar from '@/components/AppSidebar.vue'
+import AppUpdater from '@/components/layout/AppUpdater.vue'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -36,8 +37,9 @@ function handleMailboxSelected(email: string, resourceId: string, hostingerAccou
     <AppSidebar @mailbox-selected="handleMailboxSelected" />
 
     <!-- MAIN ROUTER INSET -->
-    <SidebarInset class="flex flex-col h-screen overflow-hidden min-w-0 bg-background">
+    <SidebarInset class="flex flex-col h-screen overflow-hidden min-w-0 bg-background relative">
       <RouterView />
+      <AppUpdater />
     </SidebarInset>
   </SidebarProvider>
 </template>
