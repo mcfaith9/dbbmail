@@ -176,7 +176,7 @@ function createWindow() {
   createSplash()
   
   win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, 'icon.ico'),
+    icon: path.join(process.env.VITE_PUBLIC, 'icon1.ico'),
     width: 1200,
     height: 800,
     minWidth: 1200,
