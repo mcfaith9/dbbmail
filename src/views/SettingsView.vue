@@ -532,9 +532,15 @@ onUnmounted(() => {
                 <span>Auto-update checking is inactive in development mode. Packaged builds will automatically fetch updates from GitHub Releases.</span>
               </div>
 
-              <div v-else-if="updaterStatus === 'error'" class="text-xs text-destructive flex items-center gap-1.5 mt-1">
-                <Info class="size-3.5" />
-                <span>Update status: {{ updaterError || 'No new updates or repository not configured.' }}</span>
+              <div
+                v-else-if="updaterStatus === 'error'"
+                class="text-xs text-destructive flex items-start gap-1.5 mt-1 min-w-0 max-w-full"
+              >
+                <Info class="size-3.5 shrink-0 mt-0.5" />
+
+                <span class="min-w-0 break-words whitespace-normal overflow-wrap-anywhere">
+                  Update status: {{ updaterError || 'No new updates or repository not configured.' }}
+                </span>
               </div>
 
               <div v-else class="text-xs text-muted-foreground mt-1">
