@@ -37,8 +37,8 @@
     "installerHeader": "public/installer-header.bmp",
     "installerSidebar": "public/installer-sidebar.bmp",
 
-    "installerIcon": "build/icon1.ico",
-    "uninstallerIcon": "build/icon1.ico",
+    "installerIcon": "public/icon1.ico",
+    "uninstallerIcon": "public/icon1.ico",
 
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
