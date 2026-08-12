@@ -18,7 +18,7 @@
     "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
   },
   "win": {
-    "icon": "public/icon.ico",
+    "icon": "public/icon1.ico",
     "target": [
       {
         "target": "nsis",
@@ -36,6 +36,10 @@
     "deleteAppDataOnUninstall": false,
     "installerHeader": "public/installer-header.bmp",
     "installerSidebar": "public/installer-sidebar.bmp",
+
+    "installerIcon": "build/icon1.ico",
+    "uninstallerIcon": "build/icon1.ico",
+
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
     "shortcutName": "DBB App"
