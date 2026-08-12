@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import {
   Database,
   RefreshCw,
@@ -17,6 +17,7 @@ import {
   ArrowUpCircle,
   FolderGit2,
   Info,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
 } from '@lucide/vue'
 
 import { Button } from '@/components/ui/button'
@@ -164,6 +165,52 @@ const handleDeleteEntry = (key: string) => {
   removeItem(key)
   showToast(`Item "${key}" deleted from cache`)
 }
+
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
+
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(filteredEntries.value.length / itemsPerPage.value))
+)
+
+const paginatedEntries = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value
+
+  return filteredEntries.value.slice(
+    start,
+    start + itemsPerPage.value
+  )
+})
+
+const pageRangeStart = computed(() => {
+  if (filteredEntries.value.length === 0) return 0
+
+  return (currentPage.value - 1) * itemsPerPage.value + 1
+})
+
+const pageRangeEnd = computed(() => {
+  return Math.min(
+    currentPage.value * itemsPerPage.value,
+    filteredEntries.value.length
+  )
+})
+
+const changePage = (page: number) => {
+  if (page < 1 || page > totalPages.value) return
+
+  currentPage.value = page
+}
+
+const changePerPage = (event: Event) => {
+  const value = Number((event.target as HTMLSelectElement).value)
+
+  itemsPerPage.value = value
+  currentPage.value = 1
+}
+
+watch(searchQuery, () => {
+  currentPage.value = 1
+})
 
 onMounted(async () => {
   refreshStats()
@@ -321,157 +368,6 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Cache TTL Configuration Section -->
-      <div class="p-5 rounded-xl border bg-card text-card-foreground shadow-xs space-y-4">
-        <div class="flex items-center gap-2 pb-2 border-b">
-          <Clock class="size-4 text-primary" />
-          <h2 class="text-sm font-semibold">Cache Expiration (TTL) Configurations</h2>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <!-- Mailbox List TTL -->
-          <div class="space-y-1.5">
-            <Label class="text-xs font-medium">Mailboxes List TTL</Label>
-            <select
-              class="w-full h-9 rounded-md border border-input bg-background px-3 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-              :value="cacheSettings.mailboxesTtlMs"
-              @change="handleMailboxesTtlChange"
-            >
-              <option :value="5 * 60 * 1000">5 Minutes</option>
-              <option :value="15 * 60 * 1000">15 Minutes</option>
-              <option :value="30 * 60 * 1000">30 Minutes (Recommended)</option>
-              <option :value="60 * 60 * 1000">1 Hour</option>
-              <option :value="12 * 60 * 60 * 1000">12 Hours</option>
-              <option :value="24 * 60 * 60 * 1000">24 Hours</option>
-            </select>
-            <p class="text-[11px] text-muted-foreground">How long to reuse mailbox accounts list.</p>
-          </div>
-
-          <!-- Quota Storage TTL -->
-          <div class="space-y-1.5">
-            <Label class="text-xs font-medium">Mailbox Quota Storage TTL</Label>
-            <select
-              class="w-full h-9 rounded-md border border-input bg-background px-3 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-              :value="cacheSettings.quotaTtlMs"
-              @change="handleQuotaTtlChange"
-            >
-              <option :value="5 * 60 * 1000">5 Minutes</option>
-              <option :value="15 * 60 * 1000">15 Minutes (Recommended)</option>
-              <option :value="30 * 60 * 1000">30 Minutes</option>
-              <option :value="60 * 60 * 1000">1 Hour</option>
-            </select>
-            <p class="text-[11px] text-muted-foreground">How long storage quota info stays valid.</p>
-          </div>
-
-          <!-- Messages TTL -->
-          <div class="space-y-1.5">
-            <Label class="text-xs font-medium">Messages & Email Content TTL</Label>
-            <select
-              class="w-full h-9 rounded-md border border-input bg-background px-3 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-              :value="cacheSettings.messagesTtlMs"
-              @change="handleMessagesTtlChange"
-            >
-              <option :value="5 * 60 * 1000">5 Minutes</option>
-              <option :value="10 * 60 * 1000">10 Minutes (Recommended)</option>
-              <option :value="30 * 60 * 1000">30 Minutes</option>
-              <option :value="60 * 60 * 1000">1 Hour</option>
-            </select>
-            <p class="text-[11px] text-muted-foreground">How long email previews & bodies remain cached.</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Cache Entry Inspector Table -->
-      <div class="p-5 rounded-xl border bg-card text-card-foreground shadow-xs space-y-4">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b">
-          <div class="flex items-center gap-2">
-            <Database class="size-4 text-primary" />
-            <h2 class="text-sm font-semibold">Cached Items Inspector</h2>
-            <Badge variant="secondary" class="text-[10px] font-mono">{{ stats.totalEntries }} items</Badge>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <Input
-              v-model="searchQuery"
-              placeholder="Search cached keys..."
-              class="h-8 text-xs w-48 lg:w-64"
-            />
-            <Button variant="ghost" size="icon" class="h-8 w-8 shrink-0" title="Refresh Table" @click="refreshStats">
-              <RefreshCw class="size-3.5" />
-            </Button>
-          </div>
-        </div>
-
-        <div class="rounded-md border overflow-hidden">
-          <Table>
-            <TableHeader class="bg-muted/50">
-              <TableRow>
-                <TableHead class="text-xs font-semibold">Cache Key</TableHead>
-                <TableHead class="text-xs font-semibold">Status</TableHead>
-                <TableHead class="text-xs font-semibold">Cached At</TableHead>
-                <TableHead class="text-xs font-semibold">TTL Remaining</TableHead>
-                <TableHead class="text-xs font-semibold">Size</TableHead>
-                <TableHead class="text-xs font-semibold text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              <TableRow v-if="filteredEntries.length === 0">
-                <TableCell colspan="6" class="h-24 text-center text-xs text-muted-foreground">
-                  No cached items match your filter.
-                </TableCell>
-              </TableRow>
-
-              <TableRow v-for="entry in filteredEntries" :key="entry.key" class="text-xs">
-                <TableCell class="font-mono text-[11px] max-w-[220px] truncate">
-                  <div class="font-medium text-foreground truncate" :title="entry.key">
-                    {{ entry.key }}
-                  </div>
-                  <div class="text-[10px] text-muted-foreground truncate" :title="entry.preview">
-                    {{ entry.preview }}
-                  </div>
-                </TableCell>
-
-                <TableCell>
-                  <Badge
-                    :variant="entry.isExpired ? 'destructive' : 'outline'"
-                    class="text-[10px] uppercase font-mono px-1.5 py-0"
-                  >
-                    {{ entry.isExpired ? 'Expired' : 'Valid' }}
-                  </Badge>
-                </TableCell>
-
-                <TableCell class="text-muted-foreground text-[11px]">
-                  {{ formatTimestamp(entry.timestamp) }}
-                </TableCell>
-
-                <TableCell class="font-mono text-[11px]">
-                  <span :class="entry.isExpired ? 'text-destructive font-medium' : 'text-emerald-600 dark:text-emerald-400 font-medium'">
-                    {{ formatRemainingTime(entry.ttlRemainingMs) }}
-                  </span>
-                </TableCell>
-
-                <TableCell class="text-muted-foreground text-[11px]">
-                  {{ (entry.sizeBytes / 1024).toFixed(1) }} KB
-                </TableCell>
-
-                <TableCell class="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    class="h-7 w-7 text-muted-foreground hover:text-destructive"
-                    title="Remove from Cache"
-                    @click="handleDeleteEntry(entry.key)"
-                  >
-                    <Trash2 class="size-3.5" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-
       <!-- Software Auto-Updates Card -->
       <div class="p-5 rounded-xl border bg-card text-card-foreground shadow-xs space-y-4">
         <div class="flex items-center justify-between pb-2 border-b">
@@ -578,6 +474,238 @@ onUnmounted(() => {
               <div class="h-full bg-primary transition-all duration-300" :style="{ width: `${updaterProgress}%` }" />
             </div>
             <div class="text-[10px] text-right font-mono text-muted-foreground">{{ updaterProgress }}% downloaded</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cache TTL Configuration Section -->
+      <div class="p-5 rounded-xl border bg-card text-card-foreground shadow-xs space-y-4">
+        <div class="flex items-center gap-2 pb-2 border-b">
+          <Clock class="size-4 text-primary" />
+          <h2 class="text-sm font-semibold">Cache Expiration (TTL) Configurations</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Mailbox List TTL -->
+          <div class="space-y-1.5">
+            <Label class="text-xs font-medium">Mailboxes List TTL</Label>
+            <select
+              class="w-full h-9 rounded-md border border-input bg-background px-3 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+              :value="cacheSettings.mailboxesTtlMs"
+              @change="handleMailboxesTtlChange"
+            >
+              <option :value="5 * 60 * 1000">5 Minutes</option>
+              <option :value="15 * 60 * 1000">15 Minutes</option>
+              <option :value="30 * 60 * 1000">30 Minutes (Recommended)</option>
+              <option :value="60 * 60 * 1000">1 Hour</option>
+              <option :value="12 * 60 * 60 * 1000">12 Hours</option>
+              <option :value="24 * 60 * 60 * 1000">24 Hours</option>
+            </select>
+            <p class="text-[11px] text-muted-foreground">How long to reuse mailbox accounts list.</p>
+          </div>
+
+          <!-- Quota Storage TTL -->
+          <div class="space-y-1.5">
+            <Label class="text-xs font-medium">Mailbox Quota Storage TTL</Label>
+            <select
+              class="w-full h-9 rounded-md border border-input bg-background px-3 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+              :value="cacheSettings.quotaTtlMs"
+              @change="handleQuotaTtlChange"
+            >
+              <option :value="5 * 60 * 1000">5 Minutes</option>
+              <option :value="15 * 60 * 1000">15 Minutes (Recommended)</option>
+              <option :value="30 * 60 * 1000">30 Minutes</option>
+              <option :value="60 * 60 * 1000">1 Hour</option>
+            </select>
+            <p class="text-[11px] text-muted-foreground">How long storage quota info stays valid.</p>
+          </div>
+
+          <!-- Messages TTL -->
+          <div class="space-y-1.5">
+            <Label class="text-xs font-medium">Messages & Email Content TTL</Label>
+            <select
+              class="w-full h-9 rounded-md border border-input bg-background px-3 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+              :value="cacheSettings.messagesTtlMs"
+              @change="handleMessagesTtlChange"
+            >
+              <option :value="5 * 60 * 1000">5 Minutes</option>
+              <option :value="10 * 60 * 1000">10 Minutes (Recommended)</option>
+              <option :value="30 * 60 * 1000">30 Minutes</option>
+              <option :value="60 * 60 * 1000">1 Hour</option>
+            </select>
+            <p class="text-[11px] text-muted-foreground">How long email previews & bodies remain cached.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cache Entry Inspector Table -->
+      <div class="p-5 rounded-xl border bg-card text-card-foreground shadow-xs space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b">
+          <div class="flex items-center gap-2">
+            <Database class="size-4 text-primary" />
+            <h2 class="text-sm font-semibold">Cached Items Inspector</h2>
+            <Badge variant="secondary" class="text-[10px] font-mono">{{ stats.totalEntries }} items</Badge>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <Input
+              v-model="searchQuery"
+              placeholder="Search cached keys..."
+              class="h-8 text-xs w-48 lg:w-64"
+            />
+            <Button variant="ghost" size="icon" class="h-8 w-8 shrink-0" title="Refresh Table" @click="refreshStats">
+              <RefreshCw class="size-3.5" />
+            </Button>
+          </div>
+        </div>
+
+        <div class="rounded-md border overflow-hidden">
+          <Table>
+            <TableHeader class="bg-muted/50">
+              <TableRow>
+                <TableHead class="text-xs font-semibold">Cache Key</TableHead>
+                <TableHead class="text-xs font-semibold">Status</TableHead>
+                <TableHead class="text-xs font-semibold">Cached At</TableHead>
+                <TableHead class="text-xs font-semibold">TTL Remaining</TableHead>
+                <TableHead class="text-xs font-semibold">Size</TableHead>
+                <TableHead class="text-xs font-semibold text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+
+            <TableBody>
+              <TableRow v-if="filteredEntries.length === 0">
+                <TableCell colspan="6" class="h-24 text-center text-xs text-muted-foreground">
+                  No cached items match your filter.
+                </TableCell>
+              </TableRow>
+
+              <TableRow v-for="entry in paginatedEntries" :key="entry.key" class="text-xs">
+                <TableCell class="font-mono text-[11px] max-w-[220px] truncate">
+                  <div class="font-medium text-foreground truncate" :title="entry.key">
+                    {{ entry.key }}
+                  </div>
+                  <div class="text-[10px] text-muted-foreground truncate" :title="entry.preview">
+                    {{ entry.preview }}
+                  </div>
+                </TableCell>
+
+                <TableCell>
+                  <Badge
+                    :variant="entry.isExpired ? 'destructive' : 'outline'"
+                    class="text-[10px] uppercase font-mono px-1.5 py-0"
+                  >
+                    {{ entry.isExpired ? 'Expired' : 'Valid' }}
+                  </Badge>
+                </TableCell>
+
+                <TableCell class="text-muted-foreground text-[11px]">
+                  {{ formatTimestamp(entry.timestamp) }}
+                </TableCell>
+
+                <TableCell class="font-mono text-[11px]">
+                  <span :class="entry.isExpired ? 'text-destructive font-medium' : 'text-emerald-600 dark:text-emerald-400 font-medium'">
+                    {{ formatRemainingTime(entry.ttlRemainingMs) }}
+                  </span>
+                </TableCell>
+
+                <TableCell class="text-muted-foreground text-[11px]">
+                  {{ (entry.sizeBytes / 1024).toFixed(1) }} KB
+                </TableCell>
+
+                <TableCell class="text-right">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    class="h-7 w-7 text-muted-foreground hover:text-destructive"
+                    title="Remove from Cache"
+                    @click="handleDeleteEntry(entry.key)"
+                  >
+                    <Trash2 class="size-3.5" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+
+        <div
+          v-if="filteredEntries.length > 0"
+          class="flex flex-col sm:flex-row items-center justify-between gap-3 border-t p-3 bg-card/60 text-xs text-muted-foreground"
+        >
+          <!-- Rows per page selector & status -->
+          <div class="flex items-center gap-3">
+            <span class="text-xs">Rows per page:</span>
+
+            <select
+              :value="itemsPerPage"
+              class="h-8 rounded border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              @change="changePerPage"
+            >
+              <option :value="5">5</option>
+              <option :value="10">10</option>
+              <option :value="25">25</option>
+              <option :value="50">50</option>
+            </select>
+
+            <span class="hidden sm:inline">
+              Showing {{ pageRangeStart }}–{{ pageRangeEnd }} of
+              {{ filteredEntries.length }} items
+            </span>
+          </div>
+
+          <!-- Page navigation -->
+          <div class="flex items-center gap-1.5">
+            <span class="mr-2 font-medium text-foreground">
+              Page {{ currentPage }} of {{ totalPages }}
+            </span>
+
+            <!-- First -->
+            <Button
+              variant="outline"
+              size="icon"
+              class="h-8 w-8"
+              :disabled="currentPage <= 1"
+              @click="changePage(1)"
+              title="First Page"
+            >
+              <ChevronsLeft class="h-3.5 w-3.5" />
+            </Button>
+
+            <!-- Previous -->
+            <Button
+              variant="outline"
+              size="icon"
+              class="h-8 w-8"
+              :disabled="currentPage <= 1"
+              @click="changePage(currentPage - 1)"
+              title="Previous Page"
+            >
+              <ChevronLeft class="h-3.5 w-3.5" />
+            </Button>
+
+            <!-- Next -->
+            <Button
+              variant="outline"
+              size="icon"
+              class="h-8 w-8"
+              :disabled="currentPage >= totalPages"
+              @click="changePage(currentPage + 1)"
+              title="Next Page"
+            >
+              <ChevronRight class="h-3.5 w-3.5" />
+            </Button>
+
+            <!-- Last -->
+            <Button
+              variant="outline"
+              size="icon"
+              class="h-8 w-8"
+              :disabled="currentPage >= totalPages"
+              @click="changePage(totalPages)"
+              title="Last Page"
+            >
+              <ChevronsRight class="h-3.5 w-3.5" />
+            </Button>
           </div>
         </div>
       </div>

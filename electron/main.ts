@@ -15,7 +15,7 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // Configure Auto Updater
-autoUpdater.autoDownload = false
+autoUpdater.autoDownload = true
 autoUpdater.autoInstallOnAppQuit = true
 
 function setupAutoUpdater() {
