@@ -59,3 +59,5 @@ export interface MailboxQuotaResponse {
     supported: boolean
   }
 }
+
+export type MailFolder = 'INBOX' | 'INBOX.Sent' | 'INBOX.Junk'

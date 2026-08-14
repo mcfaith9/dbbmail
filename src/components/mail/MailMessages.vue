@@ -7,7 +7,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import type { Message, PaginationInfo } from '@/types/mail'
+import type {
+  Message,
+  PaginationInfo,
+  MailFolder,
+} from '@/types/mail'
 import { useMailFormatting } from '@/composables/useMailFormatting'
 
 import MailToolbar from '@/components/mail/MailToolbar.vue'
@@ -24,12 +28,19 @@ const props = withDefaults(
     pagination?: PaginationInfo
     loading?: boolean
     error?: string | null
+    activeFolder?: MailFolder
   }>(),
   {
     messages: () => [],
-    pagination: () => ({ page: 1, perPage: 10, total: 0, totalPages: 1 }),
+    pagination: () => ({
+      page: 1,
+      perPage: 10,
+      total: 0,
+      totalPages: 1,
+    }),
     loading: false,
     error: null,
+    activeFolder: 'INBOX',
   }
 )
 
@@ -38,6 +49,7 @@ const emit = defineEmits<{
   (e: 'per-page-change', perPage: number): void
   (e: 'refresh'): void
   (e: 'message-selected', message: Message | null): void
+  (e: 'folder-change', folder: MailFolder): void
 }>()
 
 const { formatSender } = useMailFormatting()
@@ -64,6 +76,10 @@ const filteredMessages = computed(() => {
   })
 })
 
+const handleFolderChange = (folder: MailFolder) => {
+  emit('folder-change', folder)
+}
+
 function clearSearch() {
   searchQuery.value = ''
 }
@@ -88,8 +104,10 @@ function closeDetail() {
       v-model:search-query="searchQuery"
       :pagination="pagination"
       :loading="loading"
+      :active-folder="activeFolder"
       @clear-search="clearSearch"
       @refresh="emit('refresh')"
+      @folder-change="handleFolderChange"
     />
 
     <!-- Main Table / Detail Split Body -->

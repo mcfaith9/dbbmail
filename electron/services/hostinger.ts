@@ -86,10 +86,9 @@ export async function getMailboxes() {
 
 export async function getUserInbox(
   mailboxResourceId: string,
-  folder: string = 'INBOX',
+  folder: MailFolder = 'INBOX',
   hostingerAccount: HostingerAccount = 'DMBB'
 ) {
-
   const response = await axios.get(
     `${HOSTINGER_API_URL}/mailboxes/${mailboxResourceId}/folders/${folder}/messages`,
     {

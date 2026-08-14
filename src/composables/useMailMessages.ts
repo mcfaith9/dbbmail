@@ -1,11 +1,11 @@
 import { ref } from 'vue'
-import type { Message, PaginationInfo } from '@/types/mail'
+import type { Message, PaginationInfo, MailFolder } from '@/types/mail'
 import { cacheService } from '@/services/cacheService'
 
 export function useMailMessages() {
   const selectedMailbox = ref<string | null>(null)
   const selectedMailboxResourceId = ref<string | null>(null)
-  const activeFolder = ref<string>('Inbox')
+  const activeFolder = ref<MailFolder>('INBOX')
   const activeMessage = ref<Message | null>(null)
 
   const messages = ref<Message[]>([])
@@ -26,14 +26,12 @@ export function useMailMessages() {
     mailboxResourceId: string,
     page = pagination.value.page,
     perPage = pagination.value.perPage,
-    folderName = activeFolder.value
+    folder: MailFolder = activeFolder.value
   ) {
     messagesLoading.value = true
     messagesError.value = null
 
     try {
-      const folder = folderName.toUpperCase()
-
       const hostingerAccount =
         selectedHostingerAccount.value
 
@@ -132,13 +130,21 @@ export function useMailMessages() {
     )
   }
 
-  function handleFolderSelected(folderTitle: string) {
-    activeFolder.value = folderTitle
+  async function handleFolderChange(folder: MailFolder) {
+    if (activeFolder.value === folder) return
+
+    activeFolder.value = folder
     activeMessage.value = null
-    if (selectedMailboxResourceId.value) {
-      pagination.value.page = 1
-      fetchMessages(selectedMailboxResourceId.value, 1, pagination.value.perPage, folderTitle)
-    }
+    pagination.value.page = 1
+
+    if (!selectedMailboxResourceId.value) return
+
+    await fetchMessages(
+      selectedMailboxResourceId.value,
+      1,
+      pagination.value.perPage,
+      folder
+    )
   }
 
   async function handleMessageSelected(msg: Message | null) {
@@ -255,7 +261,7 @@ export function useMailMessages() {
     messagesError,
     fetchMessages,
     handleMailboxSelected,
-    handleFolderSelected,
+    handleFolderChange,
     handleMessageSelected,
     handlePageChange,
     handlePerPageChange,

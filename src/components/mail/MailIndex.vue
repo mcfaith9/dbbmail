@@ -35,6 +35,7 @@ const {
   handlePageChange,
   handlePerPageChange,
   handleRefresh,
+  handleFolderChange,
 } = useMailMessages()
 
 const handleCustomMailboxSelected = (e: Event) => {
@@ -191,10 +192,12 @@ onUnmounted(() => {
               :pagination="pagination"
               :loading="messagesLoading"
               :error="messagesError"
+              :active-folder="activeFolder"
               @page-change="handlePageChange"
               @per-page-change="handlePerPageChange"
               @refresh="handleRefresh"
               @message-selected="handleMessageSelected"
+              @folder-change="handleFolderChange"
             />
           </div>
         </div>
