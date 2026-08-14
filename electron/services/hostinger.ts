@@ -4,6 +4,7 @@ const HOSTINGER_API_URL =
   'https://api.mail.hostinger.com/api/v1'
 
 type HostingerAccount = 'DMBB' | 'DBB'
+import type { MailFolder } from '@/types/mail'
 
 const tokens: Record<HostingerAccount, string | undefined> = {
   DMBB: 'dc8b477effe663b4d309e98dcccec8646dae3653ad4f86eb72cefe028ec375e0',
@@ -107,22 +108,12 @@ export async function getUserInbox(
 
 export async function getUserMessageContent(
   mailboxResourceId: string,
-  folder: string,
+  folder: MailFolder,
   uid: number,
   hostingerAccount: HostingerAccount = 'DMBB'
 ) {
-  // console.log(
-  //   '[Hostinger] Fetching message content:',
-  //   {
-  //     mailboxResourceId,
-  //     folder,
-  //     uid,
-  //     hostingerAccount,
-  //   }
-  // )
-
   const response = await axios.get(
-    `${HOSTINGER_API_URL}/mailboxes/${mailboxResourceId}/folders/${folder}/messages/${uid}/text`,
+    `${HOSTINGER_API_URL}/mailboxes/${encodeURIComponent(mailboxResourceId)}/folders/${encodeURIComponent(folder)}/messages/${uid}/text`,
     {
       headers: getHeaders(hostingerAccount),
     }

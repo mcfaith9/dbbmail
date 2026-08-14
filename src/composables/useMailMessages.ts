@@ -50,7 +50,13 @@ export function useMailMessages() {
 
       const response = await cacheService.fetchWithCache(
         cacheKey,
-        () => window.hostinger!.getMailboxMessages(mailboxResourceId, folder, hostingerAccount),
+        () => {
+          return window.hostinger!.getMailboxMessages(
+            mailboxResourceId,
+            folder,
+            hostingerAccount
+          )
+        },
         settings.messagesTtlMs
       )
 
@@ -173,20 +179,12 @@ export function useMailMessages() {
     fetchMessages(selectedMailboxResourceId.value, pagination.value.page, pagination.value.perPage)
   }
 
-  async function fetchMessageContent(
-    message: Message
-  ) {
+  async function fetchMessageContent(message: Message) {
     if (!message) return
 
-    const mailboxResourceId =
-      selectedMailboxResourceId.value
-
-    const hostingerAccount =
-      selectedHostingerAccount.value
-
-    const folder =
-      (activeFolder.value || 'INBOX').toUpperCase()
-
+    const mailboxResourceId = selectedMailboxResourceId.value
+    const hostingerAccount = selectedHostingerAccount.value
+    const folder = activeFolder.value || 'INBOX'
     const uid = Number(message.uid)
 
     if (
@@ -208,10 +206,13 @@ export function useMailMessages() {
       return
     }
 
-    const cacheKey = `msg_content_${hostingerAccount}_${mailboxResourceId}_${folder}_${uid}`
+    const cacheKey =
+      `msg_content_${hostingerAccount}_${mailboxResourceId}_${folder}_${uid}`
+
     const settings = cacheService.getSettings()
 
-    const cached = cacheService.get<{ text: string; html: string }>(cacheKey)
+    const cached =
+      cacheService.get<{ text: string; html: string }>(cacheKey)
 
     if (cached) {
       message.text = cached.text
@@ -227,12 +228,25 @@ export function useMailMessages() {
     try {
       const response = await cacheService.fetchWithCache(
         cacheKey,
-        () => window.hostinger!.getMessageContent(mailboxResourceId, folder, uid, hostingerAccount),
+        () =>
+          window.hostinger!.getMessageContent(
+            mailboxResourceId,
+            folder,
+            uid,
+            hostingerAccount
+          ),
         settings.messagesTtlMs
       )
 
-      const text = response?.data?.text ?? response?.text ?? ''
-      const html = response?.data?.html ?? response?.html ?? ''
+      const text =
+        response?.data?.text ??
+        response?.text ??
+        ''
+
+      const html =
+        response?.data?.html ??
+        response?.html ??
+        ''
 
       message.text = text
       message.html = html

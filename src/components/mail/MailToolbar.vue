@@ -33,7 +33,7 @@ const props = withDefaults(
       totalPages: 1,
     }),
     loading: false,
-    activeFolder: 'inbox',
+    activeFolder: 'INBOX',
   }
 )
 
