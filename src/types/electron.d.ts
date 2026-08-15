@@ -1,5 +1,7 @@
 export {}
 
+import type { MailFolder } from './mail'
+
 export interface UpdateStatusData {
   status: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error' | 'dev'
   info?: any
@@ -26,10 +28,12 @@ declare global {
     hostinger?: {
       getMe: () => Promise<any>
       getMailboxMessages: (
-        mailboxResourceId: string,
-        folder: string,
-        hostingerAccount: 'DMBB' | 'DBB'
-      ) => Promise<any>
+         mailboxResourceId: string,
+         folder: MailFolder,
+         hostingerAccount: 'DMBB' | 'DBB',
+         page?: number,
+         perPage?: number
+       ) => Promise<any>
       getMessageContent: (
         mailboxResourceId: string,
         folder: string,

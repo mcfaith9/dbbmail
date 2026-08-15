@@ -118,14 +118,13 @@ ipcMain.handle(
   ) => {
     return getUserInbox(
       mailboxResourceId,
-      folder,
+      folder as MailFolder,
       hostingerAccount,
       page,
       perPage
     )
   }
 )
-
 ipcMain.handle(
   'hostinger:usermessagecontent',
   async (
