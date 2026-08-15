@@ -44,28 +44,32 @@ contextBridge.exposeInMainWorld('hostinger', {
   getMailboxMessages: (
     mailboxResourceId: string,
     folder: string,
-    hostingerAccount: 'DMBB' | 'DBB'
+    hostingerAccount: 'DMBB' | 'DBB',
+    page = 1,
+    perPage = 10
   ) =>
     ipcRenderer.invoke(
       'hostinger:userinbox',
       mailboxResourceId,
       folder,
-      hostingerAccount
+      hostingerAccount,
+      page,
+      perPage
     ),
 
   getMessageContent: (
-    mailboxResourceId: string,
-    folder: string,
-    uid: number,
-    hostingerAccount: 'DMBB' | 'DBB'
-  ) =>
-    ipcRenderer.invoke(
-      'hostinger:usermessagecontent',
-      mailboxResourceId,
-      folder,
-      uid,
-      hostingerAccount
-    ),
+     mailboxResourceId: string,
+     folder: string,
+     uid: number,
+     hostingerAccount: 'DMBB' | 'DBB'
+   ) =>
+     ipcRenderer.invoke(
+       'hostinger:usermessagecontent',
+       mailboxResourceId,
+       folder,
+       uid,
+       hostingerAccount
+     ),
 
   getMailboxQuota: (
     mailboxResourceId: string,

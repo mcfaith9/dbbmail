@@ -26,73 +26,91 @@ export function useMailMessages() {
     mailboxResourceId: string,
     page = pagination.value.page,
     perPage = pagination.value.perPage,
-    folder: MailFolder = activeFolder.value
+    folder: MailFolder = activeFolder.value,
+    forceRefresh = false
   ) {
     messagesLoading.value = true
     messagesError.value = null
 
     try {
-      const hostingerAccount =
-        selectedHostingerAccount.value
+      const hostingerAccount = selectedHostingerAccount.value
 
       if (!hostingerAccount) {
-        throw new Error(
-          'No Hostinger account selected'
-        )
+        throw new Error('No Hostinger account selected')
       }
 
       if (!window.hostinger) {
         throw new Error('Hostinger service is not available')
       }
 
-      const cacheKey = `messages_${hostingerAccount}_${mailboxResourceId}_${folder}`
+      const cacheKey =
+        `messages_${hostingerAccount}_${mailboxResourceId}_${folder}_${page}_${perPage}`
+
       const settings = cacheService.getSettings()
 
-      const response = await cacheService.fetchWithCache(
-        cacheKey,
-        () => {
-          return window.hostinger!.getMailboxMessages(
-            mailboxResourceId,
-            folder,
-            hostingerAccount
-          )
-        },
-        settings.messagesTtlMs
-      )
+      let response
+
+      if (forceRefresh) {
+        // IMPORTANT:
+        // Refresh must bypass the existing cache.
+        response = await window.hostinger.getMailboxMessages(
+          mailboxResourceId,
+          folder,
+          hostingerAccount,
+          page,
+          perPage
+        )
+      } else {
+        response = await cacheService.fetchWithCache(
+          cacheKey,
+          () => {
+            return window.hostinger!.getMailboxMessages(
+              mailboxResourceId,
+              folder,
+              hostingerAccount,
+              page,
+              perPage
+            )
+          },
+          settings.messagesTtlMs
+        )
+      }
 
       let list: Message[] = []
 
-      if (Array.isArray(response.data)) {
+      if (Array.isArray(response?.data)) {
         list = response.data
-      } else if (response.data && Array.isArray(response.data.messages)) {
+      } else if (
+        response?.data &&
+        Array.isArray(response.data.messages)
+      ) {
         list = response.data.messages
-      } else if (Array.isArray(response.messages)) {
+      } else if (Array.isArray(response?.messages)) {
         list = response.messages
       } else if (Array.isArray(response)) {
         list = response
       }
 
-      let pag: PaginationInfo = {
-        page: page,
-        perPage: perPage,
-        total: list.length,
-        totalPages: Math.ceil(list.length / perPage) || 1,
-      }
+      const apiPagination =
+        response?.pagination ??
+        response?.data?.pagination
 
-      if (response.pagination) {
-        pag = {
-          page: Number(response.pagination.page) || page,
-          perPage: Number(response.pagination.perPage) || perPage,
-          total: Number(response.pagination.total) || list.length,
-          totalPages: Number(response.pagination.totalPages) || Math.ceil(list.length / perPage) || 1,
-        }
-      } else if (response.data?.pagination) {
-        pag = {
-          page: Number(response.data.pagination.page) || page,
-          perPage: Number(response.data.pagination.perPage) || perPage,
-          total: Number(response.data.pagination.total) || list.length,
-          totalPages: Number(response.data.pagination.totalPages) || Math.ceil(list.length / perPage) || 1,
-        }
+      const total =
+        Number(apiPagination?.total) || list.length
+
+      const pag: PaginationInfo = {
+        page:
+          Number(apiPagination?.page) || page,
+
+        perPage:
+          Number(apiPagination?.perPage) || perPage,
+
+        total,
+
+        totalPages:
+          Number(apiPagination?.totalPages) ||
+          Math.ceil(total / perPage) ||
+          1,
       }
 
       list.forEach((msg) => {
@@ -102,9 +120,13 @@ export function useMailMessages() {
 
       messages.value = list
       pagination.value = pag
+
     } catch (err: any) {
       console.error('MESSAGE FETCH ERROR:', err)
-      messagesError.value = err.message || 'Failed to load messages'
+
+      messagesError.value =
+        err?.message || 'Failed to load messages'
+
       messages.value = []
     } finally {
       messagesLoading.value = false
@@ -161,22 +183,50 @@ export function useMailMessages() {
     }
   }
 
-  function handlePageChange(newPage: number) {
+  async function handlePageChange(newPage: number) {
     if (!selectedMailboxResourceId.value) return
+
+    if (
+      newPage < 1 ||
+      newPage > pagination.value.totalPages
+    ) {
+      return
+    }
+
     pagination.value.page = newPage
-    fetchMessages(selectedMailboxResourceId.value, newPage, pagination.value.perPage)
+
+    await fetchMessages(
+      selectedMailboxResourceId.value,
+      newPage,
+      pagination.value.perPage,
+      activeFolder.value
+    )
   }
 
-  function handlePerPageChange(newPerPage: number) {
+  async function handlePerPageChange(newPerPage: number) {
     if (!selectedMailboxResourceId.value) return
+
     pagination.value.perPage = newPerPage
     pagination.value.page = 1
-    fetchMessages(selectedMailboxResourceId.value, 1, newPerPage)
+
+    await fetchMessages(
+      selectedMailboxResourceId.value,
+      1,
+      newPerPage,
+      activeFolder.value
+    )
   }
 
-  function handleRefresh() {
+  async function handleRefresh() {
     if (!selectedMailboxResourceId.value) return
-    fetchMessages(selectedMailboxResourceId.value, pagination.value.page, pagination.value.perPage)
+
+    await fetchMessages(
+      selectedMailboxResourceId.value,
+      pagination.value.page,
+      pagination.value.perPage,
+      activeFolder.value,
+      true
+    )
   }
 
   async function fetchMessageContent(message: Message) {

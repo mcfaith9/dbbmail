@@ -108,14 +108,18 @@ ipcMain.handle(
   'hostinger:userinbox',
   async (
     _event,
-    mailboxResourceId: string,
-    folder: string,
-    hostingerAccount: 'DMBB' | 'DBB'
+    mailboxResourceId,
+    folder,
+    hostingerAccount,
+    page = 1,
+    perPage = 10
   ) => {
-    return await getUserInbox(
+    return getUserInbox(
       mailboxResourceId,
       folder,
-      hostingerAccount
+      hostingerAccount,
+      page,
+      perPage
     )
   }
 )
