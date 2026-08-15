@@ -103,17 +103,47 @@ onUnmounted(() => {
                 </BreadcrumbItem>
               </template>
 
-              <!-- Level 3: Active Folder -->
               <BreadcrumbSeparator class="shrink-0" />
-              <BreadcrumbItem :class="activeMessage ? 'shrink-0' : 'truncate'">
-                <BreadcrumbPage :class="activeMessage ? '' : 'font-semibold text-foreground'">
-                  {{ activeFolder }}
+
+              <BreadcrumbItem class="shrink-0">
+                <BreadcrumbLink
+                  v-if="activeFolder !== 'INBOX'"
+                  href="#"
+                  @click.prevent="handleFolderChange('INBOX')"
+                  class="hover:text-foreground transition-colors"
+                >
+                  Inbox
+                </BreadcrumbLink>
+
+                <BreadcrumbPage
+                  v-else
+                  class="font-semibold text-foreground"
+                >
+                  Inbox
                 </BreadcrumbPage>
               </BreadcrumbItem>
 
-              <!-- Level 4: Active Message Subject -->
+              <!-- Level 4: Child Folder -->
+              <template v-if="activeFolder !== 'INBOX'">
+                <BreadcrumbSeparator class="shrink-0" />
+
+                <BreadcrumbItem class="shrink-0">
+                  <BreadcrumbPage class="font-semibold text-foreground">
+                    {{
+                      activeFolder === 'INBOX.Sent'
+                        ? 'Sent'
+                        : activeFolder === 'INBOX.Junk'
+                          ? 'Junk'
+                          : activeFolder
+                    }}
+                  </BreadcrumbPage>
+                </BreadcrumbItem>
+              </template>
+
+              <!-- Level 5: Active Message Subject -->
               <template v-if="activeMessage">
                 <BreadcrumbSeparator class="shrink-0" />
+
                 <BreadcrumbItem class="truncate">
                   <BreadcrumbPage class="font-semibold text-foreground truncate">
                     {{ activeMessage.subject || '(No Subject)' }}
