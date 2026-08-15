@@ -39,11 +39,20 @@ if (typeof window !== 'undefined') {
       getMailboxMessages: async (
         mailboxResourceId: string,
         folder: string,
-        hostingerAccount: 'DMBB' | 'DBB'
+        hostingerAccount: 'DMBB' | 'DBB',
+        page = 1,
+        perPage = 10
       ) => {
         const res = await axios.get('/api/hostinger/userinbox', {
-          params: { mailboxResourceId, folder, hostingerAccount },
+          params: {
+            mailboxResourceId,
+            folder,
+            hostingerAccount,
+            page,
+            perPage,
+          },
         })
+
         return res.data
       },
       getMessageContent: async (

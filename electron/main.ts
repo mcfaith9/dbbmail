@@ -12,6 +12,8 @@ import {
   getMessageAttachment,
 } from './services/hostinger'
 
+import type { MailFolder } from '../src/types/mail'
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // Configure Auto Updater
@@ -108,9 +110,9 @@ ipcMain.handle(
   'hostinger:userinbox',
   async (
     _event,
-    mailboxResourceId,
-    folder,
-    hostingerAccount,
+    mailboxResourceId: string,
+    folder: MailFolder,
+    hostingerAccount: 'DMBB' | 'DBB',
     page = 1,
     perPage = 10
   ) => {
