@@ -184,9 +184,9 @@ function createWindow() {
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, 'icon1.ico'),
     width: 1200,
-    height: 800,
+    height: 700,
     minWidth: 1200,
-    minHeight: 800,
+    minHeight: 700,
 
     show: false,
 

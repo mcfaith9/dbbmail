@@ -1,234 +1,126 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
-  Database,
-  RefreshCw,
-  Trash2,
-  Clock,
-  HardDrive,
-  ShieldCheck,
-  Key,
+  UserRound,
+  Shield,
+  Palette,
+  Bell,
+  Sliders,
+  CheckCircle2,
   Sun,
   Moon,
-  CheckCircle2,
-  Sliders,
-  Sparkles,
-  Download,
-  ArrowUpCircle,
-  FolderGit2,
-  Info,
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
+  Database,
+  ChevronRight,
 } from '@lucide/vue'
 
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 
-import { useCache } from '@/composables/useCache'
+import ProfileSection from '@/components/settings/ProfileSection.vue'
+import SecuritySection from '@/components/settings/SecuritySection.vue'
+import AppearanceSection from '@/components/settings/AppearanceSection.vue'
+import NotificationsSection from '@/components/settings/NotificationsSection.vue'
+import SystemCacheSection from '@/components/settings/SystemCacheSection.vue'
+
 import { useTheme } from '@/composables/useTheme'
-import { mailboxService } from '@/services/mailboxService'
-import type { UpdateStatusData } from '@/types/electron'
 
-const {
-  cacheSettings,
-  stats,
-  refreshStats,
-  updateSettings,
-  clearAllCache,
-  removeItem,
-  totalStorageFormatted,
-  validEntriesCount,
-  expiredEntriesCount,
-} = useCache()
+type SettingsTab = 'account' | 'security' | 'appearance' | 'notifications' | 'cache'
 
+const route = useRoute()
+const router = useRouter()
 const { isDark, toggleTheme } = useTheme()
 
-const searchQuery = ref('')
+const activeTab = ref<SettingsTab>('account')
 const notificationMessage = ref<string | null>(null)
-const refreshing = ref(false)
-
-// Updater state
-const appVersion = ref('1.0.0')
-const updaterStatus = ref<'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error' | 'dev'>('idle')
-const updaterProgress = ref(0)
-const updaterInfo = ref<any>(null)
-const updaterError = ref('')
-
-let updaterCleanup: (() => void) | null = null
+let toastTimer: any = null
 
 const showToast = (msg: string) => {
+  if (toastTimer) clearTimeout(toastTimer)
   notificationMessage.value = msg
-  setTimeout(() => {
+  toastTimer = setTimeout(() => {
     notificationMessage.value = null
-  }, 3500)
+  }, 4000)
 }
 
-const handleCheckForUpdates = async () => {
-  updaterStatus.value = 'checking'
-  updaterError.value = ''
-  try {
-    const res = await window.electronAPI?.checkForUpdates()
-    if (res?.status === 'dev') {
-      updaterStatus.value = 'dev'
-      updaterError.value = res.message || 'Auto-updates are disabled in development mode'
-    }
-  } catch (err: any) {
-    updaterStatus.value = 'error'
-    updaterError.value = err?.message || 'Failed to check for updates'
-  }
-}
+const tabs = [
+  {
+    id: 'account' as const,
+    label: 'Account & Profile',
+    shortLabel: 'Account',
+    icon: UserRound,
+    description: 'Personal details, avatar, and linked identities',
+  },
+  {
+    id: 'security' as const,
+    label: 'Security & PIN',
+    shortLabel: 'Security',
+    icon: Shield,
+    description: 'Change PIN, password, and session auto-lock',
+  },
+  {
+    id: 'appearance' as const,
+    label: 'Appearance & Theme',
+    shortLabel: 'Appearance',
+    icon: Palette,
+    description: 'Light/Dark mode and interface density',
+  },
+  {
+    id: 'notifications' as const,
+    label: 'Notification Rules',
+    shortLabel: 'Notifications',
+    icon: Bell,
+    description: 'Alert chimes, high-priority PO notifications, and storage warnings',
+  },
+  {
+    id: 'cache' as const,
+    label: 'API Cache & Updates',
+    shortLabel: 'System',
+    icon: Database,
+    description: 'Hostinger API cache management, TTLs, and releases',
+  },
+]
 
-const handleDownloadUpdate = async () => {
-  updaterStatus.value = 'downloading'
-  await window.electronAPI?.downloadUpdate()
-}
-
-const handleQuitAndInstall = () => {
-  window.electronAPI?.quitAndInstall()
-}
-
-const filteredEntries = computed(() => {
-  if (!searchQuery.value.trim()) return stats.value.entries
-  const q = searchQuery.value.toLowerCase()
-  return stats.value.entries.filter(
-    (e) => e.key.toLowerCase().includes(q) || e.preview.toLowerCase().includes(q)
-  )
+const currentTabInfo = computed(() => {
+  return tabs.find((t) => t.id === activeTab.value) || tabs[0]
 })
 
-const formatRemainingTime = (ms: number) => {
-  if (ms <= 0) return 'Expired'
-  const seconds = Math.floor(ms / 1000)
-  if (seconds < 60) return `${seconds}s`
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ${seconds % 60}s`
-  const hours = Math.floor(minutes / 60)
-  return `${hours}h ${minutes % 60}m`
+const selectTab = (tabId: SettingsTab) => {
+  activeTab.value = tabId
+  router.replace({
+    query: { ...route.query, tab: tabId },
+  })
 }
 
-const formatTimestamp = (ts: number) => {
-  if (!ts) return '—'
-  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-}
-
-const handleToggleCache = (val: boolean) => {
-  updateSettings({ enabled: val })
-  showToast(val ? 'API response cache enabled' : 'API response cache disabled')
-}
-
-const handleMailboxesTtlChange = (event: Event) => {
-  const target = event.target as HTMLSelectElement
-  const val = Number(target.value)
-  updateSettings({ mailboxesTtlMs: val })
-  showToast('Mailboxes TTL updated')
-}
-
-const handleQuotaTtlChange = (event: Event) => {
-  const target = event.target as HTMLSelectElement
-  const val = Number(target.value)
-  updateSettings({ quotaTtlMs: val })
-  showToast('Quota TTL updated')
-}
-
-const handleMessagesTtlChange = (event: Event) => {
-  const target = event.target as HTMLSelectElement
-  const val = Number(target.value)
-  updateSettings({ messagesTtlMs: val })
-  showToast('Messages TTL updated')
-}
-
-const handleForceRefreshMailboxes = async () => {
-  refreshing.value = true
-  try {
-    mailboxService.clearCache()
-    await mailboxService.getMailboxes(true)
-    refreshStats()
-    showToast('Mailboxes and Quota API cache refreshed successfully')
-  } catch (err: any) {
-    showToast('Failed to refresh: ' + (err?.message || 'Error'))
-  } finally {
-    refreshing.value = false
-  }
-}
-
-const handleClearAll = () => {
-  clearAllCache()
-  showToast('All cached API items have been purged')
-}
-
-const handleDeleteEntry = (key: string) => {
-  removeItem(key)
-  showToast(`Item "${key}" deleted from cache`)
-}
-
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
-
-const totalPages = computed(() =>
-  Math.max(1, Math.ceil(filteredEntries.value.length / itemsPerPage.value))
+// Sync with route query param
+watch(
+  () => route.query.tab,
+  (newTab) => {
+    if (newTab && typeof newTab === 'string') {
+      const valid = tabs.some((t) => t.id === newTab)
+      if (valid) {
+        activeTab.value = newTab as SettingsTab
+      }
+    }
+  },
+  { immediate: true }
 )
 
-const paginatedEntries = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value
-
-  return filteredEntries.value.slice(
-    start,
-    start + itemsPerPage.value
-  )
-})
-
-const pageRangeStart = computed(() => {
-  if (filteredEntries.value.length === 0) return 0
-
-  return (currentPage.value - 1) * itemsPerPage.value + 1
-})
-
-const pageRangeEnd = computed(() => {
-  return Math.min(
-    currentPage.value * itemsPerPage.value,
-    filteredEntries.value.length
-  )
-})
-
-const changePage = (page: number) => {
-  if (page < 1 || page > totalPages.value) return
-
-  currentPage.value = page
-}
-
-const changePerPage = (event: Event) => {
-  const value = Number((event.target as HTMLSelectElement).value)
-
-  itemsPerPage.value = value
-  currentPage.value = 1
-}
-
-watch(searchQuery, () => {
-  currentPage.value = 1
-})
-
-onMounted(async () => {
-  refreshStats()
-  if (window.electronAPI?.getVersion) {
-    appVersion.value = await window.electronAPI.getVersion()
+onMounted(() => {
+  if (route.query.tab && typeof route.query.tab === 'string') {
+    const valid = tabs.some((t) => t.id === route.query.tab)
+    if (valid) {
+      activeTab.value = route.query.tab as SettingsTab
+    }
   }
-  if (window.electronAPI?.onUpdateStatus) {
-    updaterCleanup = window.electronAPI.onUpdateStatus((data: UpdateStatusData) => {
-      updaterStatus.value = data.status
-      if (data.info) updaterInfo.value = data.info
-      if (data.progress) updaterProgress.value = Math.round(data.progress.percent)
-      if (data.error) updaterError.value = data.error
-    })
-  }
-})
-
-onUnmounted(() => {
-  if (updaterCleanup) updaterCleanup()
 })
 </script>
 
@@ -246,505 +138,162 @@ onUnmounted(() => {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage class="font-semibold text-foreground text-xs">Settings & Cache</BreadcrumbPage>
+              <span class="text-muted-foreground text-xs font-medium">Settings</span>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage class="font-semibold text-foreground text-xs">
+                {{ currentTabInfo.shortLabel }}
+              </BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
       </div>
 
       <div class="flex items-center gap-2">
-        <Button variant="outline" size="sm" class="h-8 gap-1.5 text-xs" @click="toggleTheme">
+        <Button
+          variant="outline"
+          size="sm"
+          class="h-8 gap-1.5 text-xs"
+          title="Toggle Dark / Light Theme"
+          @click="toggleTheme"
+        >
           <Sun v-if="isDark" class="size-3.5 text-amber-400" />
           <Moon v-else class="size-3.5" />
+          <span class="hidden sm:inline">{{ isDark ? 'Light' : 'Dark' }}</span>
         </Button>
       </div>
     </header>
 
-    <!-- Content scroll area -->
-    <div class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 max-w-6xl mx-auto w-full">
-      <!-- Toast Notification Banner -->
-      <transition
-        enter-active-class="transition duration-200 ease-out"
-        enter-from-class="opacity-0 -translate-y-2"
-        enter-to-class="opacity-100 translate-y-0"
-        leave-active-class="transition duration-150 ease-in"
-        leave-from-class="opacity-100 translate-y-0"
-        leave-to-class="opacity-0 -translate-y-2"
-      >
-        <div
-          v-if="notificationMessage"
-          class="p-3 px-4 rounded-lg bg-primary/10 border border-primary/20 text-primary text-xs font-medium flex items-center justify-between shadow-xs"
+    <!-- Main Content Area -->
+    <div class="flex-1 overflow-y-auto">
+      <div class="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
+        <!-- Toast Notification Banner -->
+        <transition
+          enter-active-class="transition duration-200 ease-out"
+          enter-from-class="opacity-0 -translate-y-2"
+          enter-to-class="opacity-100 translate-y-0"
+          leave-active-class="transition duration-150 ease-in"
+          leave-from-class="opacity-100 translate-y-0"
+          leave-to-class="opacity-0 -translate-y-2"
         >
-          <div class="flex items-center gap-2">
-            <CheckCircle2 class="size-4 shrink-0 text-primary" />
-            <span>{{ notificationMessage }}</span>
-          </div>
-          <button class="text-xs opacity-70 hover:opacity-100" @click="notificationMessage = null">Dismiss</button>
-        </div>
-      </transition>
-
-      <!-- Page Title -->
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
-        <div>
-          <h1 class="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <Sliders class="size-5 text-primary" />
-            <span>Application Settings</span>
-          </h1>
-          <p class="text-xs text-muted-foreground mt-0.5">
-            Manage persistent API caching, rate limit protection, storage TTLs, and API credentials.
-          </p>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            class="h-8 gap-1.5 text-xs"
-            :disabled="refreshing"
-            @click="handleForceRefreshMailboxes"
+          <div
+            v-if="notificationMessage"
+            class="p-3 px-4 rounded-lg bg-primary/10 border border-primary/20 text-primary text-xs font-medium flex items-center justify-between shadow-xs sticky top-2 z-30 backdrop-blur-xs"
           >
-            <RefreshCw class="size-3.5" :class="{ 'animate-spin': refreshing }" />
-            <span>Force API Refresh</span>
-          </Button>
+            <div class="flex items-center gap-2">
+              <CheckCircle2 class="size-4 shrink-0 text-primary" />
+              <span>{{ notificationMessage }}</span>
+            </div>
+            <button
+              class="text-xs opacity-70 hover:opacity-100 font-semibold"
+              @click="notificationMessage = null"
+            >
+              Dismiss
+            </button>
+          </div>
+        </transition>
 
-          <Button variant="destructive" size="sm" class="h-8 gap-1.5 text-xs" @click="handleClearAll">
-            <Trash2 class="size-3.5" />
-            <span>Purge All Cache</span>
-          </Button>
-        </div>
-      </div>
-
-      <!-- Cache Stats Summary Cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div class="p-4 rounded-xl border bg-card text-card-foreground shadow-xs flex flex-col justify-between">
-          <div class="flex items-center justify-between text-muted-foreground">
-            <span class="text-xs font-medium">Cache Status</span>
-            <ShieldCheck class="size-4 text-emerald-500" />
-          </div>
-          <div class="mt-2 flex items-baseline justify-between">
-            <span class="text-lg font-bold">
-              {{ cacheSettings.enabled ? 'Active' : 'Disabled' }}
-            </span>
-            <Switch
-              :checked="cacheSettings.enabled"
-              class="scale-90"
-              @update:checked="handleToggleCache"
-            />
-          </div>
-          <p class="text-[11px] text-muted-foreground mt-1">Prevents Hostinger API rate limits</p>
-        </div>
-
-        <div class="p-4 rounded-xl border bg-card text-card-foreground shadow-xs flex flex-col justify-between">
-          <div class="flex items-center justify-between text-muted-foreground">
-            <span class="text-xs font-medium">Storage Usage</span>
-            <HardDrive class="size-4 text-primary" />
-          </div>
-          <div class="mt-2 text-lg font-bold">
-            {{ totalStorageFormatted }}
-          </div>
-          <p class="text-[11px] text-muted-foreground mt-1">Stored in persistent localStorage</p>
-        </div>
-
-        <div class="p-4 rounded-xl border bg-card text-card-foreground shadow-xs flex flex-col justify-between">
-          <div class="flex items-center justify-between text-muted-foreground">
-            <span class="text-xs font-medium">Active Cached Items</span>
-            <Database class="size-4 text-blue-500" />
-          </div>
-          <div class="mt-2 text-lg font-bold">
-            {{ validEntriesCount }} <span class="text-xs font-normal text-muted-foreground">/ {{ stats.totalEntries }} total</span>
-          </div>
-          <p class="text-[11px] text-muted-foreground mt-1">{{ expiredEntriesCount }} expired items pending cleanup</p>
-        </div>
-
-        <div class="p-4 rounded-xl border bg-card text-card-foreground shadow-xs flex flex-col justify-between">
-          <div class="flex items-center justify-between text-muted-foreground">
-            <span class="text-xs font-medium">Auto Deduplication</span>
-            <Sparkles class="size-4 text-amber-500" />
-          </div>
-          <div class="mt-2 text-lg font-bold text-emerald-600 dark:text-emerald-400">
-            Enabled
-          </div>
-          <p class="text-[11px] text-muted-foreground mt-1">Locks concurrent requests</p>
-        </div>
-      </div>
-
-      <!-- Software Auto-Updates Card -->
-      <div class="p-5 rounded-xl border bg-card text-card-foreground shadow-xs space-y-4">
-        <div class="flex items-center justify-between pb-2 border-b">
-          <div class="flex items-center gap-2">
-            <FolderGit2 class="size-4 text-primary" />
-            <h2 class="text-sm font-semibold">Software Updates (GitHub Releases)</h2>
-            <Badge variant="outline" class="text-[10px] font-mono">v{{ appVersion }}</Badge>
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            class="h-8 gap-1.5 text-xs"
-            :disabled="updaterStatus === 'checking' || updaterStatus === 'downloading'"
-            @click="handleCheckForUpdates"
+        <!-- Page Title Header -->
+        <div class="flex md:hidden gap-1.5 overflow-x-auto pt-4 pb-1 no-scrollbar">
+          <button
+            v-for="tab in tabs"
+            :key="tab.id"
+            type="button"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors"
+            :class="
+              activeTab === tab.id
+                ? 'bg-primary text-primary-foreground shadow-xs'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            "
+            @click="selectTab(tab.id)"
           >
-            <RefreshCw class="size-3.5" :class="{ 'animate-spin': updaterStatus === 'checking' }" />
-            <span>Check for Updates</span>
-          </Button>
+            <component :is="tab.icon" class="size-3.5" />
+            <span>{{ tab.shortLabel }}</span>
+          </button>
         </div>
 
-        <div class="p-4 rounded-lg border bg-background space-y-3">
-          <div class="flex items-start justify-between gap-3">
-            <div class="space-y-1">
-              <div class="text-xs font-semibold flex items-center gap-2">
-                <span>Installed Application Version:</span>
-                <span class="font-mono text-primary font-bold">v{{ appVersion }}</span>
-              </div>
-
-              <!-- Status Feedback Messages -->
-              <div v-if="updaterStatus === 'checking'" class="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
-                <RefreshCw class="size-3.5 animate-spin text-primary" />
-                <span>Checking GitHub Releases for new updates...</span>
-              </div>
-
-              <div v-else-if="updaterStatus === 'available'" class="text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1.5 mt-1">
-                <Sparkles class="size-3.5" />
-                <span>New Version {{ updaterInfo?.version ? `v${updaterInfo.version}` : '' }} is available on GitHub!</span>
-              </div>
-
-              <div v-else-if="updaterStatus === 'not-available'" class="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5 mt-1">
-                <CheckCircle2 class="size-3.5" />
-                <span>You are running the latest version.</span>
-              </div>
-
-              <div v-else-if="updaterStatus === 'downloading'" class="text-xs text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1.5 mt-1">
-                <Download class="size-3.5 animate-bounce" />
-                <span>Downloading update package ({{ updaterProgress }}%)...</span>
-              </div>
-
-              <div v-else-if="updaterStatus === 'downloaded'" class="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5 mt-1">
-                <CheckCircle2 class="size-3.5" />
-                <span>Update package downloaded! Ready to install.</span>
-              </div>
-
-              <div v-else-if="updaterStatus === 'dev'" class="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
-                <Info class="size-3.5" />
-                <span>Auto-update checking is inactive in development mode. Packaged builds will automatically fetch updates from GitHub Releases.</span>
-              </div>
-
-              <div
-                v-else-if="updaterStatus === 'error'"
-                class="text-xs text-destructive flex items-start gap-1.5 mt-1 min-w-0 max-w-full"
+        <!-- Desktop Grid Layout: Settings Sidebar Navigation + Main Content Panel -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+          <!-- Left Navigation Sidebar (Desktop) -->
+          <aside class="hidden md:block md:col-span-4 lg:col-span-3 space-y-1 sticky top-4">
+            <nav class="space-y-1">
+              <button
+                v-for="tab in tabs"
+                :key="tab.id"
+                type="button"
+                class="w-full flex items-start gap-3 p-3 rounded-xl text-left transition-all group"
+                :class="
+                  activeTab === tab.id
+                    ? 'bg-primary/10 text-primary border border-primary/20 shadow-xs font-medium'
+                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                "
+                @click="selectTab(tab.id)"
               >
-                <Info class="size-3.5 shrink-0 mt-0.5" />
+                <component
+                  :is="tab.icon"
+                  class="size-4.5 shrink-0 mt-0.5 transition-colors"
+                  :class="activeTab === tab.id ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'"
+                />
+                <div class="flex-1 min-w-0">
+                  <div class="text-xs font-semibold leading-none mb-1 flex items-center justify-between">
+                    <span>{{ tab.label }}</span>
+                    <ChevronRight
+                      v-if="activeTab === tab.id"
+                      class="size-3.5 text-primary shrink-0"
+                    />
+                  </div>
+                  <div class="text-[11px] opacity-80 line-clamp-1">
+                    {{ tab.description }}
+                  </div>
+                </div>
+              </button>
+            </nav>
 
-                <span class="min-w-0 break-words whitespace-normal overflow-wrap-anywhere">
-                  Update status: {{ updaterError || 'No new updates or repository not configured.' }}
-                </span>
+            <div class="pt-4 px-3 text-[11px] text-muted-foreground space-y-1">
+              <div class="flex items-center justify-between">
+                <span>App Version:</span>
+                <span class="font-mono font-medium text-foreground">v0.0.3</span>
               </div>
-
-              <div v-else class="text-xs text-muted-foreground mt-1">
-                Automatic updates are checked on application launch in packaged production builds.
+              <div class="flex items-center justify-between">
+                <span>Security Engine:</span>
+                <span class="font-medium text-emerald-600 dark:text-emerald-400">PIN Protected</span>
               </div>
             </div>
+          </aside>
 
-            <!-- Action buttons -->
-            <div class="flex items-center gap-2 shrink-0">
-              <Button
-                v-if="updaterStatus === 'available'"
-                size="sm"
-                class="h-8 gap-1.5 text-xs"
-                @click="handleDownloadUpdate"
-              >
-                <Download class="size-3.5" />
-                <span>Download Update</span>
-              </Button>
-
-              <Button
-                v-if="updaterStatus === 'downloaded'"
-                size="sm"
-                class="h-8 gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                @click="handleQuitAndInstall"
-              >
-                <ArrowUpCircle class="size-3.5" />
-                <span>Restart & Install</span>
-              </Button>
-            </div>
-          </div>
-
-          <!-- Progress Bar when downloading -->
-          <div v-if="updaterStatus === 'downloading'" class="space-y-1 pt-1">
-            <div class="h-2 w-full bg-muted rounded-full overflow-hidden">
-              <div class="h-full bg-primary transition-all duration-300" :style="{ width: `${updaterProgress}%` }" />
-            </div>
-            <div class="text-[10px] text-right font-mono text-muted-foreground">{{ updaterProgress }}% downloaded</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Cache TTL Configuration Section -->
-      <div class="p-5 rounded-xl border bg-card text-card-foreground shadow-xs space-y-4">
-        <div class="flex items-center gap-2 pb-2 border-b">
-          <Clock class="size-4 text-primary" />
-          <h2 class="text-sm font-semibold">Cache Expiration (TTL) Configurations</h2>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <!-- Mailbox List TTL -->
-          <div class="space-y-1.5">
-            <Label class="text-xs font-medium">Mailboxes List TTL</Label>
-            <select
-              class="w-full h-9 rounded-md border border-input bg-background px-3 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-              :value="cacheSettings.mailboxesTtlMs"
-              @change="handleMailboxesTtlChange"
-            >
-              <option :value="5 * 60 * 1000">5 Minutes</option>
-              <option :value="15 * 60 * 1000">15 Minutes</option>
-              <option :value="30 * 60 * 1000">30 Minutes (Recommended)</option>
-              <option :value="60 * 60 * 1000">1 Hour</option>
-              <option :value="12 * 60 * 60 * 1000">12 Hours</option>
-              <option :value="24 * 60 * 60 * 1000">24 Hours</option>
-            </select>
-            <p class="text-[11px] text-muted-foreground">How long to reuse mailbox accounts list.</p>
-          </div>
-
-          <!-- Quota Storage TTL -->
-          <div class="space-y-1.5">
-            <Label class="text-xs font-medium">Mailbox Quota Storage TTL</Label>
-            <select
-              class="w-full h-9 rounded-md border border-input bg-background px-3 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-              :value="cacheSettings.quotaTtlMs"
-              @change="handleQuotaTtlChange"
-            >
-              <option :value="5 * 60 * 1000">5 Minutes</option>
-              <option :value="15 * 60 * 1000">15 Minutes (Recommended)</option>
-              <option :value="30 * 60 * 1000">30 Minutes</option>
-              <option :value="60 * 60 * 1000">1 Hour</option>
-            </select>
-            <p class="text-[11px] text-muted-foreground">How long storage quota info stays valid.</p>
-          </div>
-
-          <!-- Messages TTL -->
-          <div class="space-y-1.5">
-            <Label class="text-xs font-medium">Messages & Email Content TTL</Label>
-            <select
-              class="w-full h-9 rounded-md border border-input bg-background px-3 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-              :value="cacheSettings.messagesTtlMs"
-              @change="handleMessagesTtlChange"
-            >
-              <option :value="5 * 60 * 1000">5 Minutes</option>
-              <option :value="10 * 60 * 1000">10 Minutes (Recommended)</option>
-              <option :value="30 * 60 * 1000">30 Minutes</option>
-              <option :value="60 * 60 * 1000">1 Hour</option>
-            </select>
-            <p class="text-[11px] text-muted-foreground">How long email previews & bodies remain cached.</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Cache Entry Inspector Table -->
-      <div class="p-5 rounded-xl border bg-card text-card-foreground shadow-xs space-y-4">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b">
-          <div class="flex items-center gap-2">
-            <Database class="size-4 text-primary" />
-            <h2 class="text-sm font-semibold">Cached Items Inspector</h2>
-            <Badge variant="secondary" class="text-[10px] font-mono">{{ stats.totalEntries }} items</Badge>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <Input
-              v-model="searchQuery"
-              placeholder="Search cached keys..."
-              class="h-8 text-xs w-48 lg:w-64"
+          <!-- Main Content Section -->
+          <main class="md:col-span-8 lg:col-span-9 min-w-0">
+            <!-- Profile / Account Tab -->
+            <ProfileSection
+              v-if="activeTab === 'account'"
+              @toast="showToast"
             />
-            <Button variant="ghost" size="icon" class="h-8 w-8 shrink-0" title="Refresh Table" @click="refreshStats">
-              <RefreshCw class="size-3.5" />
-            </Button>
-          </div>
-        </div>
 
-        <div class="rounded-md border overflow-hidden">
-          <Table>
-            <TableHeader class="bg-muted/50">
-              <TableRow>
-                <TableHead class="text-xs font-semibold">Cache Key</TableHead>
-                <TableHead class="text-xs font-semibold">Status</TableHead>
-                <TableHead class="text-xs font-semibold">Cached At</TableHead>
-                <TableHead class="text-xs font-semibold">TTL Remaining</TableHead>
-                <TableHead class="text-xs font-semibold">Size</TableHead>
-                <TableHead class="text-xs font-semibold text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
+            <!-- Security / PIN Tab -->
+            <SecuritySection
+              v-else-if="activeTab === 'security'"
+              @toast="showToast"
+            />
 
-            <TableBody>
-              <TableRow v-if="filteredEntries.length === 0">
-                <TableCell colspan="6" class="h-24 text-center text-xs text-muted-foreground">
-                  No cached items match your filter.
-                </TableCell>
-              </TableRow>
+            <!-- Appearance / Theme Tab -->
+            <AppearanceSection
+              v-else-if="activeTab === 'appearance'"
+              @toast="showToast"
+            />
 
-              <TableRow v-for="entry in paginatedEntries" :key="entry.key" class="text-xs">
-                <TableCell class="font-mono text-[11px] max-w-[220px] truncate">
-                  <div class="font-medium text-foreground truncate" :title="entry.key">
-                    {{ entry.key }}
-                  </div>
-                  <div class="text-[10px] text-muted-foreground truncate" :title="entry.preview">
-                    {{ entry.preview }}
-                  </div>
-                </TableCell>
+            <!-- Notifications Tab -->
+            <NotificationsSection
+              v-else-if="activeTab === 'notifications'"
+              @toast="showToast"
+            />
 
-                <TableCell>
-                  <Badge
-                    :variant="entry.isExpired ? 'destructive' : 'outline'"
-                    class="text-[10px] uppercase font-mono px-1.5 py-0"
-                  >
-                    {{ entry.isExpired ? 'Expired' : 'Valid' }}
-                  </Badge>
-                </TableCell>
-
-                <TableCell class="text-muted-foreground text-[11px]">
-                  {{ formatTimestamp(entry.timestamp) }}
-                </TableCell>
-
-                <TableCell class="font-mono text-[11px]">
-                  <span :class="entry.isExpired ? 'text-destructive font-medium' : 'text-emerald-600 dark:text-emerald-400 font-medium'">
-                    {{ formatRemainingTime(entry.ttlRemainingMs) }}
-                  </span>
-                </TableCell>
-
-                <TableCell class="text-muted-foreground text-[11px]">
-                  {{ (entry.sizeBytes / 1024).toFixed(1) }} KB
-                </TableCell>
-
-                <TableCell class="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    class="h-7 w-7 text-muted-foreground hover:text-destructive"
-                    title="Remove from Cache"
-                    @click="handleDeleteEntry(entry.key)"
-                  >
-                    <Trash2 class="size-3.5" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-
-        <div
-          v-if="filteredEntries.length > 0"
-          class="flex flex-col sm:flex-row items-center justify-between gap-3 border-t p-3 bg-card/60 text-xs text-muted-foreground"
-        >
-          <!-- Rows per page selector & status -->
-          <div class="flex items-center gap-3">
-            <span class="text-xs">Rows per page:</span>
-
-            <select
-              :value="itemsPerPage"
-              class="h-8 rounded border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              @change="changePerPage"
-            >
-              <option :value="5">5</option>
-              <option :value="10">10</option>
-              <option :value="25">25</option>
-              <option :value="50">50</option>
-            </select>
-
-            <span class="hidden sm:inline">
-              Showing {{ pageRangeStart }}–{{ pageRangeEnd }} of
-              {{ filteredEntries.length }} items
-            </span>
-          </div>
-
-          <!-- Page navigation -->
-          <div class="flex items-center gap-1.5">
-            <span class="mr-2 font-medium text-foreground">
-              Page {{ currentPage }} of {{ totalPages }}
-            </span>
-
-            <!-- First -->
-            <Button
-              variant="outline"
-              size="icon"
-              class="h-8 w-8"
-              :disabled="currentPage <= 1"
-              @click="changePage(1)"
-              title="First Page"
-            >
-              <ChevronsLeft class="h-3.5 w-3.5" />
-            </Button>
-
-            <!-- Previous -->
-            <Button
-              variant="outline"
-              size="icon"
-              class="h-8 w-8"
-              :disabled="currentPage <= 1"
-              @click="changePage(currentPage - 1)"
-              title="Previous Page"
-            >
-              <ChevronLeft class="h-3.5 w-3.5" />
-            </Button>
-
-            <!-- Next -->
-            <Button
-              variant="outline"
-              size="icon"
-              class="h-8 w-8"
-              :disabled="currentPage >= totalPages"
-              @click="changePage(currentPage + 1)"
-              title="Next Page"
-            >
-              <ChevronRight class="h-3.5 w-3.5" />
-            </Button>
-
-            <!-- Last -->
-            <Button
-              variant="outline"
-              size="icon"
-              class="h-8 w-8"
-              :disabled="currentPage >= totalPages"
-              @click="changePage(totalPages)"
-              title="Last Page"
-            >
-              <ChevronsRight class="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <!-- API Credentials & Connection Status -->
-      <div class="p-5 rounded-xl border bg-card text-card-foreground shadow-xs space-y-4">
-        <div class="flex items-center gap-2 pb-2 border-b">
-          <Key class="size-4 text-primary" />
-          <h2 class="text-sm font-semibold">Hostinger API Credentials Status</h2>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="p-3.5 rounded-lg border bg-background flex items-center justify-between">
-            <div class="space-y-0.5">
-              <div class="text-xs font-semibold flex items-center gap-2">
-                <span>DMBB Account Token</span>
-                <Badge variant="outline" class="text-[10px]">HOSTINGER_API_TOKEN</Badge>
-              </div>
-              <p class="text-[11px] text-muted-foreground">Token configured in server environment</p>
-            </div>
-            <div class="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 class="size-4" />
-              <span>Connected</span>
-            </div>
-          </div>
-
-          <div class="p-3.5 rounded-lg border bg-background flex items-center justify-between">
-            <div class="space-y-0.5">
-              <div class="text-xs font-semibold flex items-center gap-2">
-                <span>DBB Account Token</span>
-                <Badge variant="outline" class="text-[10px]">HOSTINGER_API_TOKEN_DBB</Badge>
-              </div>
-              <p class="text-[11px] text-muted-foreground">Token configured in server environment</p>
-            </div>
-            <div class="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 class="size-4" />
-              <span>Connected</span>
-            </div>
-          </div>
+            <!-- Cache & System Tab -->
+            <SystemCacheSection
+              v-else-if="activeTab === 'cache'"
+              @toast="showToast"
+            />
+          </main>
         </div>
       </div>
     </div>

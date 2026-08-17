@@ -1,13 +1,14 @@
 <script setup lang="ts">
+import { computed } from "vue"
+import { useRouter } from "vue-router"
 import {
-  BadgeCheck,
+  UserRound,
   Bell,
   ChevronsUpDown,
   LogOut,
   Moon,
-  Settings,
   Sun,
-  ShieldUser
+  ShieldUser,
 } from "@lucide/vue"
 
 import {
@@ -35,18 +36,30 @@ import { useAuth } from '@/composables/useAuth'
 import { useTheme } from '@/composables/useTheme'
 import sunflower from '@/assets/images/sunflower.avif'
 
-const { logout } = useAuth()
+const router = useRouter()
+const { user: authUser, logout } = useAuth()
 const { isDark, toggleTheme } = useTheme()
 
-defineProps<{
-  user: {
+const props = defineProps<{
+  user?: {
     name: string
     email: string
     avatar: string
   }
 }>()
 
+const displayName = computed(() => authUser.value?.name || props.user?.name || 'Marc Louie Cabigas')
+const displayEmail = computed(() => authUser.value?.email || props.user?.email || 'marclouie@dbb.com')
+
 const { isMobile } = useSidebar()
+
+const navigateTo = (tab?: string) => {
+  if (tab) {
+    router.push({ name: 'settings', query: { tab } })
+  } else {
+    router.push({ name: 'settings' })
+  }
+}
 </script>
 
 <template>
@@ -59,14 +72,14 @@ const { isMobile } = useSidebar()
             class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground md:h-8 md:p-0"
           >
             <Avatar class="h-8 w-8 rounded-lg">
-              <AvatarImage :src="sunflower"  class="h-full w-full object-cover" alt="sunflower" />
+              <AvatarImage :src="sunflower" class="h-full w-full object-cover" alt="User Avatar" />
               <AvatarFallback class="rounded-lg">
                 <ShieldUser />
               </AvatarFallback>
             </Avatar>
             <div class="grid flex-1 text-left text-sm leading-tight">
-              <span class="truncate font-medium">{{ user.name }}</span>
-              <span class="truncate text-xs">{{ user.email }}</span>
+              <span class="truncate font-medium">{{ displayName }}</span>
+              <span class="truncate text-xs text-muted-foreground">{{ displayEmail }}</span>
             </div>
             <ChevronsUpDown class="ml-auto size-4" />
           </SidebarMenuButton>
@@ -80,14 +93,14 @@ const { isMobile } = useSidebar()
           <DropdownMenuLabel class="p-0 font-normal">
             <div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
               <Avatar class="h-8 w-8 rounded-lg">
-                <AvatarImage :src="sunflower"  class="h-full w-full object-cover" alt="sunflower" />
+                <AvatarImage :src="sunflower" class="h-full w-full object-cover" alt="User Avatar" />
                 <AvatarFallback class="rounded-2xl">
                   <ShieldUser />
                 </AvatarFallback>
               </Avatar>
               <div class="grid flex-1 text-left text-sm leading-tight">
-                <span class="truncate font-medium">{{ user.name }}</span>
-                <span class="truncate text-xs">{{ user.email }}</span>
+                <span class="truncate font-medium">{{ displayName }}</span>
+                <span class="truncate text-xs text-muted-foreground">{{ displayEmail }}</span>
               </div>
             </div>
           </DropdownMenuLabel>
@@ -95,31 +108,27 @@ const { isMobile } = useSidebar()
           <DropdownMenuGroup>
             <DropdownMenuItem @click="toggleTheme">
               <Sun v-if="isDark" class="size-4 text-amber-400" />
-              <Moon v-else class="size-4" />
+              <Moon v-else class="size-4 text-primary" />
               <span>
                 {{ isDark ? 'Light Mode' : 'Dark Mode' }}
               </span>
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings />
-              Settings
-            </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
-            <DropdownMenuItem>
-              <BadgeCheck />
-              Account
+            <DropdownMenuItem @click="navigateTo('account')">
+              <UserRound class="size-4 text-primary" />
+              <span>Account</span>
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Bell />
-              Notifications
+            <DropdownMenuItem @click="navigateTo('notifications')">
+              <Bell class="size-4 text-primary" />
+              <span>Notifications</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          <DropdownMenuItem @click="logout">
-            <LogOut />
-            Lock
+          <DropdownMenuItem @click="logout" class="text-destructive focus:text-destructive">
+            <LogOut class="size-4 text-primary" />
+            <span>Lock</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
