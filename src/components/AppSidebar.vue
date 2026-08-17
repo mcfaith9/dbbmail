@@ -28,7 +28,6 @@ import {
 } from '@/components/ui/sidebar'
 
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import NavUser from '@/components/NavUser.vue'
 import MailboxQuota from '@/components/mail/MailboxQuota.vue'
@@ -286,7 +285,7 @@ onMounted(() => {
       <SidebarHeader class="gap-3.5 border-b p-4">
         <div class="flex w-full items-center justify-between">
           <div class="text-base font-semibold text-foreground flex items-center gap-2">
-            <span>Mailboxes</span>
+            <span>Mailboxes</span> 
             <Button
               variant="ghost"
               size="icon"
@@ -294,14 +293,13 @@ onMounted(() => {
               title="Force Refresh Mailboxes Cache"
               @click="fetchMailboxes(true)"
             >
-              <RefreshCw class="size-3.5" :class="{ 'animate-spin': loading }" />
-            </Button>
+              <RefreshCw
+                class="size-4"
+                :stroke-width="2"
+                :class="{ 'animate-spin': loading }"
+              />
+            </Button>           
           </div>
-
-          <Label class="flex items-center gap-2 text-xs cursor-pointer text-muted-foreground">
-            <span>Unreads</span>
-            <Switch v-model:checked="showOnlyUnreads" class="shadow-none scale-90" />
-          </Label>
         </div>
 
         <SidebarInput
