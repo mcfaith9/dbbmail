@@ -33,6 +33,7 @@ import {
 
 import { useAuth } from '@/composables/useAuth'
 import { useTheme } from '@/composables/useTheme'
+import sunflower from '@/assets/images/sunflower.avif'
 
 const { logout } = useAuth()
 const { isDark, toggleTheme } = useTheme()
@@ -58,7 +59,7 @@ const { isMobile } = useSidebar()
             class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground md:h-8 md:p-0"
           >
             <Avatar class="h-8 w-8 rounded-lg">
-              <AvatarImage :src="user.avatar" :alt="user.name" />
+              <AvatarImage :src="sunflower"  class="h-full w-full object-cover" alt="sunflower" />
               <AvatarFallback class="rounded-lg">
                 <ShieldUser />
               </AvatarFallback>
@@ -79,7 +80,7 @@ const { isMobile } = useSidebar()
           <DropdownMenuLabel class="p-0 font-normal">
             <div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
               <Avatar class="h-8 w-8 rounded-lg">
-                <AvatarImage :src="user.avatar" :alt="user.name" />
+                <AvatarImage :src="sunflower"  class="h-full w-full object-cover" alt="sunflower" />
                 <AvatarFallback class="rounded-2xl">
                   <ShieldUser />
                 </AvatarFallback>

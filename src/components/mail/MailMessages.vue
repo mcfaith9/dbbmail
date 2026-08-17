@@ -122,6 +122,7 @@ function closeDetail() {
       <MailEmptyState
         v-else-if="filteredMessages.length === 0"
         :is-search-active="!!searchQuery"
+        :active-folder="activeFolder"
       />
 
       <!-- Messages Table + Detail View Split -->

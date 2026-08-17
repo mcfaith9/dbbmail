@@ -2,7 +2,7 @@
 import { ref, onUnmounted, nextTick } from 'vue'
 import {
   Paperclip,
-  FileDown,
+  Download,
   Eye,
   FileText,
   Image as ImageIcon,
@@ -236,6 +236,8 @@ async function initializeDocumentViewer() {
     disableFullscreen: false,
   })
 
+  udocViewer.setActiveTool({ kind: 'hand' });
+
   udocViewer.on('error', ({ error, phase }) => {
     console.error('[docMentis] Viewer error:', {
       phase,
@@ -350,7 +352,7 @@ onUnmounted(() => {
             @click.stop="downloadAttachment(att)"
           >
             <Spinner v-if="loadingId === att.id" class="h-3.5 w-3.5" />
-            <FileDown v-else class="h-3.5 w-3.5" />
+            <Download v-else class="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
@@ -381,7 +383,7 @@ onUnmounted(() => {
               class="h-8 text-xs gap-1.5"
               @click="downloadAttachment(previewAttachmentItem)"
             >
-              <FileDown class="h-3.5 w-3.5" />
+              <Download class="h-3.5 w-3.5" />
               Download
             </Button>
           </div>
