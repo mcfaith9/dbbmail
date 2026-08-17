@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue'
+import { ref, onUnmounted, nextTick } from 'vue'
 import {
   Paperclip,
   FileDown,
@@ -16,9 +16,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription
 } from '@/components/ui/dialog'
 import type { Attachment, Message } from '@/types/mail'
 import { useMailFormatting } from '@/composables/useMailFormatting'
+import { UDocClient } from '@docmentis/udoc-viewer'
 
 const props = defineProps<{
   attachments: Attachment[]
@@ -34,18 +36,48 @@ const isPreviewOpen = ref(false)
 const previewAttachmentItem = ref<Attachment | null>(null)
 const previewUrl = ref<string | null>(null)
 const previewText = ref<string | null>(null)
-const previewType = ref<'image' | 'pdf' | 'text' | 'other'>('other')
+const viewerContainer = ref<HTMLElement | null>(null)
+const previewType = ref<
+  'image' | 'pdf' | 'text' | 'document' | 'other'
+>('other')
+const previewLoading = ref(false)
 
-function getFileType(att: Attachment): 'image' | 'pdf' | 'text' | 'other' {
+let udocClient: UDocClient | null = null
+let udocViewer: Awaited<ReturnType<UDocClient['createViewer']>> | null = null
+
+function getFileType(
+  att: Attachment
+): 'image' | 'pdf' | 'text' | 'document' | 'other' {
   const mime = (att.contentType || '').toLowerCase()
   const fname = (att.filename || '').toLowerCase()
 
-  if (mime.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg)$/.test(fname)) {
+  // Images
+  if (
+    mime.startsWith('image/') ||
+    /\.(png|jpe?g|gif|webp|svg|bmp|tiff?)$/.test(fname)
+  ) {
     return 'image'
   }
-  if (mime === 'application/pdf' || fname.endsWith('.pdf')) {
+
+  // PDF
+  if (
+    mime === 'application/pdf' ||
+    fname.endsWith('.pdf')
+  ) {
     return 'pdf'
   }
+
+  // Office documents / spreadsheets / presentations
+  if (
+    mime.includes('word') ||
+    mime.includes('spreadsheet') ||
+    mime.includes('presentation') ||
+    /\.(doc|docx|xlsx|ppt|pptx)$/.test(fname)
+  ) {
+    return 'document'
+  }
+
+  // Text
   if (
     mime.startsWith('text/') ||
     mime === 'application/json' ||
@@ -53,6 +85,15 @@ function getFileType(att: Attachment): 'image' | 'pdf' | 'text' | 'other' {
   ) {
     return 'text'
   }
+
+  // Old Excel format
+  if (
+    mime === 'application/vnd.ms-excel' ||
+    fname.endsWith('.xls')
+  ) {
+    return 'other'
+  }
+
   return 'other'
 }
 
@@ -111,6 +152,7 @@ async function downloadAttachment(att: Attachment) {
 
 async function previewAttachment(att: Attachment) {
   if (loadingId.value) return
+
   const type = getFileType(att)
 
   if (type === 'other') {
@@ -119,28 +161,89 @@ async function previewAttachment(att: Attachment) {
   }
 
   loadingId.value = att.id
+  previewLoading.value = true
   errorMsg.value = null
 
   try {
     const blob = await getAttachmentBlob(att)
+
+    // Clear any previous preview FIRST
     clearPreview()
 
+    // Then set the new preview
     previewAttachmentItem.value = att
     previewType.value = type
+    isPreviewOpen.value = true
+
+    await nextTick()
 
     if (type === 'text') {
       previewText.value = await blob.text()
-    } else {
-      previewUrl.value = URL.createObjectURL(blob)
+      return
     }
 
-    isPreviewOpen.value = true
+    await initializeDocumentViewer()
+
+    if (!udocViewer) {
+      throw new Error('Document viewer unavailable')
+    }
+
+    const buffer = await blob.arrayBuffer()
+    const bytes = new Uint8Array(buffer)
+
+    await udocViewer.load(bytes)
   } catch (err: any) {
-    console.error('Preview attachment failed:', err)
-    errorMsg.value = err?.message || 'Failed to preview attachment'
+    console.error('[Document Preview Error]', {
+      filename: att.filename,
+      contentType: att.contentType,
+      error: err,
+    })
+
+    errorMsg.value =
+      err?.message || `Failed to preview ${att.filename || 'attachment'}`
+
+    isPreviewOpen.value = false
   } finally {
     loadingId.value = null
+    previewLoading.value = false
   }
+}
+
+async function initializeDocumentViewer() {
+  if (!viewerContainer.value) {
+    throw new Error('Document viewer container unavailable')
+  }
+
+  if (!udocClient) {
+    udocClient = await UDocClient.create()
+  }
+
+  if (udocViewer) {
+    try {
+      udocViewer.close()
+    } catch {}
+    udocViewer = null
+  }
+
+  udocViewer = await udocClient.createViewer({
+    container: viewerContainer.value,
+    scrollMode: 'continuous',
+    layoutMode: 'single-page',
+    zoomMode: 'fit-spread-width',
+    theme: 'system',
+    disableSearch: false,
+    disableThumbnails: false,
+    disableFullscreen: false,
+  })
+
+  udocViewer.on('error', ({ error, phase }) => {
+    console.error('[docMentis] Viewer error:', {
+      phase,
+      error,
+      filename: previewAttachmentItem.value?.filename,
+      contentType: previewAttachmentItem.value?.contentType,
+    })
+  })
 }
 
 function clearPreview() {
@@ -148,8 +251,19 @@ function clearPreview() {
     URL.revokeObjectURL(previewUrl.value)
     previewUrl.value = null
   }
+
   previewText.value = null
   previewAttachmentItem.value = null
+
+  if (udocViewer) {
+    try {
+      udocViewer.close()
+    } catch (err) {
+      console.warn('Failed to close document viewer:', err)
+    }
+
+    udocViewer = null
+  }
 }
 
 function handleClosePreview() {
@@ -158,6 +272,16 @@ function handleClosePreview() {
 }
 
 onUnmounted(() => {
+  try {
+    udocViewer?.destroy()
+    udocViewer = null
+
+    udocClient?.destroy()
+    udocClient = null
+  } catch (err) {
+    console.warn('Failed to destroy document viewer:', err)
+  }
+
   clearPreview()
 })
 </script>
@@ -234,12 +358,20 @@ onUnmounted(() => {
 
     <!-- Attachment Preview Modal Dialog -->
     <Dialog :open="isPreviewOpen" @update:open="handleClosePreview">
-      <DialogContent class="max-w-4xl h-[80vh] flex flex-col p-0 gap-0 overflow-hidden">
-        <DialogHeader class="p-4 border-b flex flex-row items-center justify-between gap-2 shrink-0">
+      <DialogContent
+        class="!w-[65vw] !max-w-[65vw] !h-[80vh] !max-h-[80vh] flex flex-col p-0 gap-0 overflow-hidden"
+      >
+        <DialogHeader
+          class="h-14 px-4 border-b flex flex-row items-center justify-between gap-2 shrink-0"
+        >
           <DialogTitle class="text-sm font-semibold truncate flex items-center gap-2">
             <Paperclip class="h-4 w-4 text-primary shrink-0" />
             <span class="truncate">{{ previewAttachmentItem?.filename || 'Attachment Preview' }}</span>
           </DialogTitle>
+
+          <DialogDescription class="sr-only">
+            Preview of {{ previewAttachmentItem?.filename || 'attachment' }}
+          </DialogDescription>
 
           <div class="flex items-center gap-2 shrink-0 mr-6">
             <Button
@@ -256,32 +388,37 @@ onUnmounted(() => {
         </DialogHeader>
 
         <!-- Preview Body Container -->
-        <div class="flex-1 min-h-0 bg-muted/20 overflow-auto flex items-center justify-center p-4">
-          <!-- Image Preview -->
-          <img
-            v-if="previewType === 'image' && previewUrl"
-            :src="previewUrl"
-            :alt="previewAttachmentItem?.filename || 'Image preview'"
-            class="max-w-full max-h-full object-contain rounded shadow-sm"
-          />
+        <div class="relative flex-1 min-h-0 w-full overflow-hidden">
 
-          <!-- PDF Preview -->
-          <iframe
-            v-else-if="previewType === 'pdf' && previewUrl"
-            :src="previewUrl"
-            class="w-full h-full rounded border bg-background"
-          />
+          <!-- Loading -->
+          <div
+            v-if="previewLoading"
+            class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm"
+          >
+            <Spinner class="h-8 w-8 mb-3" />
 
-          <!-- Text Preview -->
+            <p class="text-sm font-medium">
+              Opening {{ previewAttachmentItem?.filename || 'attachment' }}...
+            </p>
+
+            <p class="text-xs text-muted-foreground mt-1">
+              Preparing document preview
+            </p>
+          </div>
+
+          <!-- Text -->
           <pre
-            v-else-if="previewType === 'text' && previewText !== null"
-            class="w-full h-full p-4 bg-card border rounded text-xs font-mono overflow-auto whitespace-pre-wrap leading-relaxed text-foreground"
+            v-if="previewType === 'text' && previewText !== null"
+            class="w-full h-full p-6 bg-card overflow-auto whitespace-pre-wrap leading-relaxed text-xs font-mono text-foreground"
           >{{ previewText }}</pre>
 
-          <!-- Fallback -->
-          <div v-else class="text-sm text-muted-foreground">
-            Unable to display preview for this file.
-          </div>
+          <!-- docMentis -->
+          <div
+            v-else
+            ref="viewerContainer"
+            class="w-full h-full"
+          ></div>
+
         </div>
       </DialogContent>
     </Dialog>
