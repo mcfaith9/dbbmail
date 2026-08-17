@@ -6,7 +6,6 @@ import {
   Shield,
   Palette,
   Bell,
-  Sliders,
   CheckCircle2,
   Sun,
   Moon,
