@@ -28,11 +28,27 @@ function getAppPin(): string {
   return localStorage.getItem('dbb_app_pin') || DEFAULT_APP_PIN
 }
 
+function getSavedProfile(): User {
+  if (typeof window === 'undefined') return DEFAULT_USER
+  try {
+    const raw = localStorage.getItem('dbb_profile') || localStorage.getItem('dbb_user')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      return { ...DEFAULT_USER, ...parsed }
+    }
+  } catch (e) {
+    // Ignore JSON error
+  }
+  return DEFAULT_USER
+}
+
 // Persistent authentication state
-const storedUser = typeof window !== 'undefined' ? localStorage.getItem('dbb_user') : null
+const isSessionActive = typeof window !== 'undefined'
+  ? (localStorage.getItem('dbb_session_active') === 'true' || !!localStorage.getItem('dbb_user'))
+  : false
 
 const currentUser = ref<User | null>(
-  storedUser ? JSON.parse(storedUser) : null
+  isSessionActive ? getSavedProfile() : null
 )
 
 // Session Lock & Inactivity Preferences
@@ -71,6 +87,7 @@ if (typeof window !== 'undefined') {
     if (elapsed >= maxIdleMs) {
       lockReason.value = `Session locked due to ${timeoutMins} minutes of inactivity.`
       currentUser.value = null
+      localStorage.removeItem('dbb_session_active')
       localStorage.removeItem('dbb_user')
       if (window.location.hash !== '#/pin-login' && !window.location.pathname.includes('pin-login')) {
         window.location.hash = '#/pin-login'
@@ -83,6 +100,7 @@ if (typeof window !== 'undefined') {
     if (lockOnBlur.value && currentUser.value) {
       lockReason.value = 'Session locked on window blur.'
       currentUser.value = null
+      localStorage.removeItem('dbb_session_active')
       localStorage.removeItem('dbb_user')
       if (window.location.hash !== '#/pin-login' && !window.location.pathname.includes('pin-login')) {
         window.location.hash = '#/pin-login'
@@ -96,8 +114,11 @@ function saveCurrentUser(user: User | null) {
 
   if (typeof window !== 'undefined') {
     if (user) {
+      localStorage.setItem('dbb_session_active', 'true')
+      localStorage.setItem('dbb_profile', JSON.stringify(user))
       localStorage.setItem('dbb_user', JSON.stringify(user))
     } else {
+      localStorage.removeItem('dbb_session_active')
       localStorage.removeItem('dbb_user')
     }
   }
@@ -153,9 +174,9 @@ export function useAuth() {
     lockReason.value = null
     lastActivity.value = Date.now()
 
-    // Merge with existing user if available
-    const existing = currentUser.value || (storedUser ? JSON.parse(storedUser) : null)
-    saveCurrentUser(existing || DEFAULT_USER)
+    // Restore saved profile
+    const existing = currentUser.value || getSavedProfile()
+    saveCurrentUser(existing)
 
     return {
       success: true,

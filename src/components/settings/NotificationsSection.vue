@@ -17,16 +17,32 @@ const emit = defineEmits<{
   (e: 'toast', message: string): void
 }>()
 
-const prefs = ref({
+const DEFAULT_PREFS = {
   emailAlerts: true,
   purchaseOrderAlerts: true,
   quotaWarnings: true,
   soundEnabled: false,
   securityAlerts: true,
-})
+}
+
+function loadNotificationPrefs() {
+  if (typeof window === 'undefined') return DEFAULT_PREFS
+  try {
+    const raw = localStorage.getItem('dbb_notification_prefs')
+    if (raw) return { ...DEFAULT_PREFS, ...JSON.parse(raw) }
+  } catch (e) {
+    // ignore
+  }
+  return DEFAULT_PREFS
+}
+
+const prefs = ref(loadNotificationPrefs())
 
 const handleToggle = (key: keyof typeof prefs.value, name: string) => {
   prefs.value[key] = !prefs.value[key]
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('dbb_notification_prefs', JSON.stringify(prefs.value))
+  }
   emit('toast', `${name} ${prefs.value[key] ? 'enabled' : 'disabled'}`)
 }
 

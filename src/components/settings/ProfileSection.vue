@@ -47,7 +47,7 @@ const isEditDialogOpen = ref(false)
 
 const profileForm = reactive({
   name: user.value?.name || 'Marc Louie Cabigas',
-  email: user.value?.email || 'marclouie@dbb.com',
+  email: user.value?.email || 'info@dmbbcontractor.com',
   role: user.value?.role || 'Systems Administrator',
   status: user.value?.status || 'Active',
 })
@@ -67,7 +67,7 @@ const initials = computed(() => {
 
 const openEditDialog = () => {
   profileForm.name = user.value?.name || 'Marc Louie Cabigas'
-  profileForm.email = user.value?.email || 'marclouie@dbb.com'
+  profileForm.email = user.value?.email || 'info@dmbbcontractor.com'
   profileForm.role = user.value?.role || 'Systems Administrator'
   profileForm.status = user.value?.status || 'Active'
   formError.value = null
@@ -145,7 +145,7 @@ const saveProfile = async () => {
               </div>
               <p class="text-xs text-muted-foreground flex items-center gap-1.5">
                 <Mail class="size-3.5" />
-                <span>{{ user?.email || 'marclouie@dbb.com' }}</span>
+                <span>{{ user?.email || 'info@dmbbcontractor.com' }}</span>
               </p>
             </div>
           </div>
@@ -213,7 +213,7 @@ const saveProfile = async () => {
         <CardContent class="space-y-2.5">
           <div class="flex items-center justify-between p-2.5 rounded-lg border bg-muted/20 text-xs">
             <div class="space-y-0.5">
-              <div class="font-medium text-foreground">marclouie@dbb.com</div>
+              <div class="font-medium text-foreground">info@dmbbcontractor.com</div>
               <div class="text-[11px] text-muted-foreground">Primary administrative routing</div>
             </div>
             <Badge variant="secondary" class="text-[10px]">Default</Badge>
@@ -287,7 +287,7 @@ const saveProfile = async () => {
               id="edit-email"
               type="email"
               v-model="profileForm.email"
-              placeholder="e.g. marclouie@dbb.com"
+              placeholder="e.g. info@dmbbcontractor.com"
             />
           </div>
 

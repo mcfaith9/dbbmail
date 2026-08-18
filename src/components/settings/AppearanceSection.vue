@@ -19,8 +19,12 @@ const emit = defineEmits<{
 
 const { isDark, toggleTheme } = useTheme()
 
-const isCompact = ref(false)
-const showEmailAvatars = ref(true)
+const isCompact = ref(
+  typeof window !== 'undefined' && localStorage.getItem('dbb_compact_density') === 'true'
+)
+const showEmailAvatars = ref(
+  typeof window !== 'undefined' ? localStorage.getItem('dbb_show_avatars') !== 'false' : true
+)
 
 const handleThemeSelect = (mode: 'light' | 'dark') => {
   if ((mode === 'dark' && !isDark.value) || (mode === 'light' && isDark.value)) {
@@ -31,11 +35,17 @@ const handleThemeSelect = (mode: 'light' | 'dark') => {
 
 const handleCompactToggle = (val: boolean) => {
   isCompact.value = val
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('dbb_compact_density', val ? 'true' : 'false')
+  }
   emit('toast', val ? 'Compact density activated' : 'Standard density activated')
 }
 
 const handleAvatarToggle = (val: boolean) => {
   showEmailAvatars.value = val
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('dbb_show_avatars', val ? 'true' : 'false')
+  }
   emit('toast', val ? 'Sender avatars visible' : 'Sender avatars hidden')
 }
 </script>
