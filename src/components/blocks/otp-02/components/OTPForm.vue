@@ -25,7 +25,7 @@ const props = defineProps<{
 }>()
 
 const router = useRouter()
-const { login } = useAuth()
+const { login, lockReason } = useAuth()
 
 const pin = ref('')
 const error = ref('')
@@ -70,6 +70,13 @@ async function handleSubmit() {
           <p class="mt-2 text-sm text-muted-foreground">
             Access your DBB Industrial systems.
           </p>
+
+          <div
+            v-if="lockReason"
+            class="mt-3 px-3 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-medium"
+          >
+            {{ lockReason }}
+          </div>
         </div>
 
         <!-- PIN -->

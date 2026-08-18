@@ -6,15 +6,7 @@ import { Mail, Clock, UserRound, X } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { useMailFormatting } from '@/composables/useMailFormatting'
 import MailAttachments from '@/components/mail/MailAttachments.vue'
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty'
-
-import { Spinner } from '@/components/ui/spinner'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const props = defineProps<{
   activeMessage: Message | null
@@ -95,27 +87,30 @@ const sanitizedHtml = computed(() => {
     />
 
     <!-- Email Content Body -->
-    <!-- Email Content Body -->
     <div
       class="py-4 flex-1 min-h-0 overflow-y-auto text-sm text-foreground font-sans"
     >
-      <!-- Loading -->
-      <Empty
+      <!-- Loading Skeleton Shimmer -->
+      <div
         v-if="activeMessage?.contentLoading"
-        class="flex-1"
+        class="space-y-4 py-2"
       >
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <Spinner />
-          </EmptyMedia>
-
-          <EmptyTitle>Loading message</EmptyTitle>
-
-          <EmptyDescription>
-            Please wait while we load the email content.
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
+        <div class="space-y-2">
+          <Skeleton class="h-4 w-full rounded" />
+          <Skeleton class="h-4 w-[92%] rounded" />
+          <Skeleton class="h-4 w-[85%] rounded" />
+        </div>
+        <div class="space-y-2 pt-2">
+          <Skeleton class="h-4 w-[95%] rounded" />
+          <Skeleton class="h-4 w-[78%] rounded" />
+          <Skeleton class="h-4 w-[88%] rounded" />
+          <Skeleton class="h-4 w-[60%] rounded" />
+        </div>
+        <div class="space-y-2 pt-2">
+          <Skeleton class="h-4 w-[70%] rounded" />
+          <Skeleton class="h-4 w-[40%] rounded" />
+        </div>
+      </div>
 
       <!-- Error -->
       <div

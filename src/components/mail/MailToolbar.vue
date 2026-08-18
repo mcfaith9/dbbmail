@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import {
   Search,
   X,
@@ -7,15 +7,14 @@ import {
   Inbox,
   Send,
   MailWarning,
+  Keyboard,
 } from '@lucide/vue'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import type {
   PaginationInfo,
   MailFolder,
 } from '@/types/mail'
-
 
 const props = withDefaults(
   defineProps<{
@@ -42,7 +41,18 @@ const emit = defineEmits<{
   (e: 'clear-search'): void
   (e: 'refresh'): void
   (e: 'folder-change', folder: MailFolder): void
+  (e: 'open-shortcuts'): void
 }>()
+
+const searchInputRef = ref<HTMLInputElement | null>(null)
+
+function focusSearch() {
+  searchInputRef.value?.focus()
+}
+
+defineExpose({
+  focusSearch,
+})
 
 const pageRangeStart = computed(() => {
   if (!props.pagination.total) return 0
@@ -70,7 +80,7 @@ const selectFolder = (folder: MailFolder) => {
 
 <template>
   <div
-    class="flex items-center justify-between gap-4 border-b p-3 bg-card/40 shrink-0"
+    class="flex items-center justify-between gap-3 border-b p-3 bg-card/40 shrink-0"
   >
     <!-- Search + Folder Buttons -->
     <div class="flex items-center gap-2 min-w-0 flex-1">
@@ -80,10 +90,11 @@ const selectFolder = (folder: MailFolder) => {
           class="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"
         />
 
-        <Input
-          :model-value="searchQuery"
-          placeholder="Filter messages by sender, subject..."
-          class="pl-9 pr-8 h-9 text-xs"
+        <input
+          ref="searchInputRef"
+          :value="searchQuery"
+          placeholder="Filter messages (Press '/' to search)..."
+          class="pl-9 pr-8 h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-2xs"
           @input="
             emit(
               'update:searchQuery',
@@ -111,8 +122,10 @@ const selectFolder = (folder: MailFolder) => {
           class="h-8 gap-1.5 text-xs"
           :disabled="loading"
           @click="selectFolder('INBOX')"
+          title="Inbox"
         >
           <Inbox class="h-3.5 w-3.5" />
+          <span class="hidden md:inline">Inbox</span>
         </Button>
 
         <Button
@@ -121,8 +134,10 @@ const selectFolder = (folder: MailFolder) => {
           class="h-8 gap-1.5 text-xs"
           :disabled="loading"
           @click="selectFolder('INBOX.Sent')"
+          title="Sent"
         >
           <Send class="h-3.5 w-3.5" />
+          <span class="hidden md:inline">Sent</span>
         </Button>
 
         <Button
@@ -131,15 +146,28 @@ const selectFolder = (folder: MailFolder) => {
           class="h-8 gap-1.5 text-xs"
           :disabled="loading"
           @click="selectFolder('INBOX.Junk')"
+          title="Junk / Spam"
         >
           <MailWarning class="h-3.5 w-3.5" />
+          <span class="hidden md:inline">Junk</span>
         </Button>
       </ButtonGroup>
     </div>
 
-    <!-- Pagination + Refresh -->
-    <div class="flex items-center gap-2 shrink-0">
-      <span class="text-xs text-muted-foreground hidden sm:inline">
+    <!-- Actions & Pagination Info -->
+    <div class="flex items-center gap-1.5 shrink-0">
+      <!-- Keyboard Shortcuts Trigger -->
+      <Button
+        variant="ghost"
+        size="icon"
+        class="h-8 w-8 text-muted-foreground hover:text-foreground"
+        title="Keyboard Shortcuts (?)"
+        @click="emit('open-shortcuts')"
+      >
+        <Keyboard class="h-3.5 w-3.5" />
+      </Button>
+
+      <span class="text-xs text-muted-foreground hidden lg:inline mr-1">
         <template v-if="pagination.total > 0">
           Showing {{ pageRangeStart }}–{{ pageRangeEnd }} of
           {{ pagination.total }}

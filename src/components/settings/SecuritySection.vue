@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import {
   Shield,
   Lock,
@@ -20,19 +19,22 @@ const emit = defineEmits<{
   (e: 'toast', message: string): void
 }>()
 
-const { logout } = useAuth()
-
-const autoLockMinutes = ref('15')
-const lockOnBlur = ref(true)
+const {
+  lockNow,
+  autoLockMinutes,
+  lockOnBlur,
+  setAutoLockMinutes,
+  setLockOnBlur,
+} = useAuth()
 
 const handleAutoLockChange = (event: Event) => {
   const target = event.target as HTMLSelectElement
-  autoLockMinutes.value = target.value
+  setAutoLockMinutes(target.value)
   emit('toast', `Auto-lock timeout set to ${target.value === '0' ? 'Never' : target.value + ' minutes'}`)
 }
 
 const handleLockOnBlurToggle = (val: boolean) => {
-  lockOnBlur.value = val
+  setLockOnBlur(val)
   emit('toast', val ? 'Lock on window blur enabled' : 'Lock on window blur disabled')
 }
 
@@ -132,7 +134,7 @@ const handlePinSuccess = (message: string) => {
             variant="destructive"
             size="sm"
             class="h-8 text-xs px-3 shrink-0 gap-1.5"
-            @click="logout"
+            @click="lockNow"
           >
             <Lock class="size-3" />
             <span>Lock Now</span>

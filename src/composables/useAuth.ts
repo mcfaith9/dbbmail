@@ -35,6 +35,62 @@ const currentUser = ref<User | null>(
   storedUser ? JSON.parse(storedUser) : null
 )
 
+// Session Lock & Inactivity Preferences
+const autoLockMinutes = ref<string>(
+  (typeof window !== 'undefined' && localStorage.getItem('dbb_auto_lock_minutes')) || '15'
+)
+
+const lockOnBlur = ref<boolean>(
+  (typeof window !== 'undefined' && localStorage.getItem('dbb_lock_on_blur') === 'true') || false
+)
+
+const lastActivity = ref<number>(Date.now())
+const lockReason = ref<string | null>(null)
+
+// Initialize Global Idle & Blur Listeners
+if (typeof window !== 'undefined') {
+  const updateActivity = () => {
+    lastActivity.value = Date.now()
+  }
+
+  window.addEventListener('mousemove', updateActivity, { passive: true })
+  window.addEventListener('mousedown', updateActivity, { passive: true })
+  window.addEventListener('keydown', updateActivity, { passive: true })
+  window.addEventListener('touchstart', updateActivity, { passive: true })
+  window.addEventListener('scroll', updateActivity, { passive: true })
+
+  // Check idle interval every 4 seconds
+  setInterval(() => {
+    if (!currentUser.value) return
+    const timeoutMins = Number(autoLockMinutes.value)
+    if (timeoutMins <= 0 || isNaN(timeoutMins)) return
+
+    const elapsed = Date.now() - lastActivity.value
+    const maxIdleMs = timeoutMins * 60 * 1000
+
+    if (elapsed >= maxIdleMs) {
+      lockReason.value = `Session locked due to ${timeoutMins} minutes of inactivity.`
+      currentUser.value = null
+      localStorage.removeItem('dbb_user')
+      if (window.location.hash !== '#/pin-login' && !window.location.pathname.includes('pin-login')) {
+        window.location.hash = '#/pin-login'
+      }
+    }
+  }, 4000)
+
+  // Handle Window Blur
+  window.addEventListener('blur', () => {
+    if (lockOnBlur.value && currentUser.value) {
+      lockReason.value = 'Session locked on window blur.'
+      currentUser.value = null
+      localStorage.removeItem('dbb_user')
+      if (window.location.hash !== '#/pin-login' && !window.location.pathname.includes('pin-login')) {
+        window.location.hash = '#/pin-login'
+      }
+    }
+  })
+}
+
 function saveCurrentUser(user: User | null) {
   currentUser.value = user
 
@@ -53,6 +109,24 @@ export function useAuth() {
   const isAuthenticated = computed(() => !!currentUser.value)
 
   const user = computed(() => currentUser.value)
+
+  function touchActivity() {
+    lastActivity.value = Date.now()
+  }
+
+  function setAutoLockMinutes(val: string) {
+    autoLockMinutes.value = val
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dbb_auto_lock_minutes', val)
+    }
+  }
+
+  function setLockOnBlur(val: boolean) {
+    lockOnBlur.value = val
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dbb_lock_on_blur', val ? 'true' : 'false')
+    }
+  }
 
   function login(pin: string): {
     success: boolean
@@ -74,6 +148,10 @@ export function useAuth() {
         error: 'Incorrect PIN. Please try again.',
       }
     }
+
+    // Reset lock reason and touch activity
+    lockReason.value = null
+    lastActivity.value = Date.now()
 
     // Merge with existing user if available
     const existing = currentUser.value || (storedUser ? JSON.parse(storedUser) : null)
@@ -121,17 +199,32 @@ export function useAuth() {
     saveCurrentUser(currentUser.value)
   }
 
-  function logout() {
+  function logout(reason?: string) {
+    if (reason) {
+      lockReason.value = reason
+    }
     saveCurrentUser(null)
     router.push('/pin-login')
+  }
+
+  function lockNow() {
+    lockReason.value = 'Session locked by user.'
+    logout()
   }
 
   return {
     currentUser,
     user,
     isAuthenticated,
+    autoLockMinutes,
+    lockOnBlur,
+    lockReason,
+    touchActivity,
+    setAutoLockMinutes,
+    setLockOnBlur,
     login,
     logout,
+    lockNow,
     changePin,
     updateUserProfile,
     getAppPin,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { SidebarProps } from "@/components/ui/sidebar"
-import { computed, h, ref, onMounted } from 'vue'
+import { computed, h, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Mail, MailX, SearchX,
 FolderOpen, FolderGit2, Settings, RefreshCw
@@ -27,8 +27,9 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 
-import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import NavUser from '@/components/NavUser.vue'
 import MailboxQuota from '@/components/mail/MailboxQuota.vue'
 
@@ -82,28 +83,34 @@ function isNavActive(item: typeof navMain[number]): boolean {
 
 /*
 |--------------------------------------------------------------------------
-| Mailboxes
+| Mailboxes & Unread Tracking
 |--------------------------------------------------------------------------
 */
 
 const mails = ref<Mailbox[]>([])
-
 const loading = ref(false)
 const error = ref<string | null>(null)
-
 const mailboxSearchQuery = ref('')
+
+// Unread counts mapping: mailboxResourceId -> unread count
+const unreadCounts = ref<Record<string, number>>({
+  'mbx_dmbb_admin': 1,
+  'mbx_dmbb_sales': 1,
+  'mbx_dmbb_billing': 0,
+  'mbx_dbb_marclouie': 0,
+  'mbx_dbb_support': 0,
+})
 
 const selectedMailbox = ref<string | null>(null)
 const selectedMailboxResourceId = ref<string | null>(null)
 const selectedHostingerAccount = ref<'DMBB' | 'DBB' | null>(null)
 
-/*
-|--------------------------------------------------------------------------
-| Unread filter
-|--------------------------------------------------------------------------
-*/
-
-const showOnlyUnreads = ref(false)
+function handleUnreadUpdate(e: Event) {
+  const customEvent = e as CustomEvent<{ mailboxResourceId: string; count: number }>
+  if (customEvent.detail?.mailboxResourceId) {
+    unreadCounts.value[customEvent.detail.mailboxResourceId] = customEvent.detail.count
+  }
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -163,20 +170,8 @@ async function fetchMailboxes(forceRefresh = false) {
 
 function selectMailbox(mail: Mailbox) {
   selectedMailbox.value = mail.address
-
-  selectedMailboxResourceId.value =
-    mail.resourceId
-
-  selectedHostingerAccount.value =
-    mail.hostingerAccount
-
-  /*
-   * This is where you connect your mailbox
-   * selection to your mail message composable.
-   *
-   * Replace this with your actual handler
-   * if it is already available in your component.
-   */
+  selectedMailboxResourceId.value = mail.resourceId
+  selectedHostingerAccount.value = mail.hostingerAccount
 
   emit(
     'mailbox-selected',
@@ -203,12 +198,17 @@ const emit = defineEmits<{
 
 /*
 |--------------------------------------------------------------------------
-| Initial load
+| Initial load & unread listeners
 |--------------------------------------------------------------------------
 */
 
 onMounted(() => {
   fetchMailboxes()
+  window.addEventListener('mailbox-unread-update', handleUnreadUpdate)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('mailbox-unread-update', handleUnreadUpdate)
 })
 </script>
 
@@ -285,7 +285,14 @@ onMounted(() => {
       <SidebarHeader class="gap-3.5 border-b p-4">
         <div class="flex w-full items-center justify-between">
           <div class="text-base font-semibold text-foreground flex items-center gap-2">
-            <span>Mailboxes</span> 
+            <span>Mailboxes</span>
+            <Badge
+              v-if="mails.length > 0"
+              variant="secondary"
+              class="h-5 px-1.5 text-xs font-semibold rounded-md bg-muted text-muted-foreground"
+            >
+              {{ mails.length }}
+            </Badge>
             <Button
               variant="ghost"
               size="icon"
@@ -300,6 +307,19 @@ onMounted(() => {
               />
             </Button>           
           </div>
+
+          <span
+            v-if="mailboxSearchQuery"
+            class="text-[11px] text-muted-foreground font-medium"
+          >
+            {{ filteredMails.length }} of {{ mails.length }}
+          </span>
+          <span
+            v-else-if="mails.length > 0"
+            class="text-[11px] text-muted-foreground font-medium"
+          >
+            {{ mails.length }} {{ mails.length === 1 ? 'total' : 'total' }}
+          </span>
         </div>
 
         <SidebarInput
@@ -312,12 +332,25 @@ onMounted(() => {
         <SidebarGroup class="px-0">
           <SidebarGroupContent>
 
-            <!-- Loading -->
+            <!-- Skeleton Loading Shimmers -->
             <div
               v-if="loading"
-              class="p-4 text-sm text-muted-foreground"
+              class="p-3 space-y-3"
             >
-              Loading mailboxes...
+              <div
+                v-for="i in 5"
+                :key="i"
+                class="flex items-start gap-3 p-2 rounded-lg border border-border/40 bg-card/40"
+              >
+                <Skeleton class="size-5 rounded-md shrink-0 mt-0.5" />
+                <div class="space-y-2 flex-1 min-w-0">
+                  <div class="flex items-center justify-between gap-2">
+                    <Skeleton class="h-3.5 w-3/4 rounded" />
+                    <Skeleton class="h-3.5 w-5 rounded-full" />
+                  </div>
+                  <Skeleton class="h-1.5 w-full rounded" />
+                </div>
+              </div>
             </div>
 
             <!-- Error -->
@@ -369,13 +402,13 @@ onMounted(() => {
                 class="border-t px-3 py-2 border-t-0"
               >
                 <div
-                  class="text-md font-semibold uppercase tracking-wider text-muted-foreground"
+                  class="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
                 >
                   {{ mail.hostingerAccount }}
                 </div>
               </div>
 
-              <!-- Mailbox -->
+              <!-- Mailbox Item -->
               <a
                 href="#"
                 :class="[
@@ -388,16 +421,25 @@ onMounted(() => {
                 @click.prevent="selectMailbox(mail)"
               >
                 <!-- Mail icon -->
-                <Mail class="mt-0.5 size-4 shrink-0" />
+                <Mail class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
 
                 <!-- Mailbox content -->
                 <div class="min-w-0 flex-1">
-                  <!-- Email -->
-                  <div class="truncate text-xs">
-                    {{ mail.address }}
+                  <!-- Email Header & Unread Badge -->
+                  <div class="flex items-center justify-between gap-1.5 mb-1">
+                    <span class="truncate text-xs font-medium text-foreground">
+                      {{ mail.address }}
+                    </span>
+                    <Badge
+                      v-if="(unreadCounts[mail.resourceId] ?? 0) > 0"
+                      variant="secondary"
+                      class="h-4 px-1.5 text-[9px] font-bold bg-primary/15 text-primary border-primary/30 shrink-0"
+                    >
+                      {{ unreadCounts[mail.resourceId] }}
+                    </Badge>
                   </div>
 
-                  <!-- Quota -->
+                  <!-- Quota Progress -->
                   <MailboxQuota
                     :mailbox-resource-id="mail.resourceId"
                     :hostinger-account="mail.hostingerAccount"
