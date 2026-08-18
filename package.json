@@ -3,7 +3,7 @@
   "private": true,
   "description": "DBBMail desktop application",
   "author": "Marc Louie Cabigas",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
