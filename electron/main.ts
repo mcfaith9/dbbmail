@@ -1,6 +1,7 @@
 import 'dotenv/config'
-
-import { app, BrowserWindow, ipcMain, Menu } from 'electron'
+import http from 'node:http'
+import axios from 'axios'
+import { app, BrowserWindow, ipcMain, Menu, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -175,6 +176,242 @@ ipcMain.handle(
       attachmentId,
       hostingerAccount
     )
+  }
+)
+
+// -------------------------------------------------------------
+// Google OAuth Desktop Loopback IPC Handler
+// -------------------------------------------------------------
+const DEFAULT_DESKTOP_CLIENT_ID = ''
+const DEFAULT_DESKTOP_CLIENT_SECRET = ''
+const GMAIL_DESKTOP_SCOPES = [
+  'https://www.googleapis.com/auth/gmail.readonly',
+  'https://www.googleapis.com/auth/userinfo.profile',
+  'https://www.googleapis.com/auth/userinfo.email',
+].join(' ')
+
+ipcMain.handle(
+  'gmail:oauth-login',
+  async (_event, options?: { clientId?: string; clientSecret?: string }) => {
+    const clientId = options?.clientId?.trim() || DEFAULT_DESKTOP_CLIENT_ID
+    const clientSecret = options?.clientSecret?.trim() || DEFAULT_DESKTOP_CLIENT_SECRET
+
+    return new Promise((resolve, reject) => {
+      let serverClosed = false
+      let timeoutId: NodeJS.Timeout | null = null
+      let assignedRedirectUri = ''
+
+      const closeServerSafely = () => {
+        if (!serverClosed) {
+          serverClosed = true
+          if (timeoutId) clearTimeout(timeoutId)
+          try {
+            server.close()
+          } catch {
+            // Ignore close errors
+          }
+        }
+      }
+
+      const server = http.createServer(async (req, res) => {
+        try {
+          const reqUrl = req.url || '/'
+          const parsedUrl = new URL(reqUrl, 'http://127.0.0.1')
+          const code = parsedUrl.searchParams.get('code')
+          const error = parsedUrl.searchParams.get('error')
+          const errorDescription = parsedUrl.searchParams.get('error_description')
+
+          if (error) {
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+            res.end(`
+              <!DOCTYPE html>
+              <html>
+              <head>
+              <meta charset="utf-8">
+              <title>DBB Mail</title>
+              <style>
+              *{box-sizing:border-box}
+              body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;background:#0a0a0a;color:#fafafa}
+              .card{width:100%;max-width:420px;padding:32px;text-align:center;background:#171717;border:1px solid #262626;border-radius:14px}
+              .icon{width:44px;height:44px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;border:1px solid #404040;border-radius:50%;color:#a3a3a3;font-size:20px}
+              h1{margin:0 0 8px;font-size:20px;font-weight:600}
+              p{margin:0 0 18px;color:#a3a3a3;font-size:14px;line-height:1.5}
+              .error{margin-bottom:18px;padding:10px 12px;background:#1c1c1c;border:1px solid #303030;border-radius:8px;color:#a3a3a3;font-size:12px}
+              .badge{display:inline-block;padding:6px 11px;background:#1c1c1c;border:1px solid #303030;border-radius:999px;color:#a3a3a3;font-size:12px}
+              </style>
+              </head>
+              <body>
+              <div class="card">
+              <div class="icon">!</div>
+              <h1>Authentication Not Completed</h1>
+              <p>Google sign-in was not completed. Your DBB Mail account was not connected.</p>
+              <div class="error">${errorDescription || error || 'Google authentication was cancelled.'}</div>
+              <div class="badge">You can close this tab and return to DBB Mail</div>
+              </div>
+              </body>
+              </html>
+            `)
+            closeServerSafely()
+            return reject(new Error(errorDescription || error || 'Google authentication was cancelled.'))
+          }
+
+          if (!code) {
+            res.writeHead(400, { 'Content-Type': 'text/plain' })
+            res.end('Missing OAuth authorization code.')
+            return
+          }
+
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+          res.end(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <title>DBB Mail</title>
+            <style>
+            *{box-sizing:border-box}body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#0a0a0a;color:#fafafa}.card{width:100%;max-width:420px;padding:32px;text-align:center;background:#171717;border:1px solid #262626;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.25)}.icon{width:44px;height:44px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;border:1px solid #404040;border-radius:50%;color:#fafafa;font-size:19px;font-weight:600;background:#1c1c1c}h1{margin:0 0 8px;font-size:20px;font-weight:600;letter-spacing:-.02em}p{margin:0 0 18px;color:#a3a3a3;font-size:14px;line-height:1.5}.success{margin-bottom:18px;padding:10px 12px;background:#1c1c1c;border:1px solid #303030;border-radius:8px;color:#a3a3a3;font-size:12px;line-height:1.5}.badge{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;background:#1c1c1c;border:1px solid #303030;border-radius:999px;color:#a3a3a3;font-size:12px}.dot{width:6px;height:6px;border-radius:50%;background:#a3a3a3}
+            </style>
+            </head>
+            <body>
+            <div class="card">
+            <div class="icon">✓</div>
+            <h1>Authentication Successful</h1>
+            <p>Your Gmail account has been successfully connected to DBB Mail with read-only access.</p>
+            <div class="success">Your Gmail account is now ready to use in DBB Mail.</div>
+            <div class="badge"><span class="dot"></span>You can close this tab and return to DBB Mail</div>
+            </div>
+            </body>
+            </html>
+          `)
+
+          closeServerSafely()
+
+          const tokenParams = new URLSearchParams()
+          tokenParams.append('code', code)
+          tokenParams.append('client_id', clientId)
+          tokenParams.append('client_secret', clientSecret)
+          tokenParams.append('redirect_uri', assignedRedirectUri)
+          tokenParams.append('grant_type', 'authorization_code')
+
+          const tokenRes = await axios.post<{
+            access_token: string
+            refresh_token?: string
+            expires_in?: number
+            token_type?: string
+          }>('https://oauth2.googleapis.com/token', tokenParams.toString(), {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            timeout: 10000,
+          })
+
+          const accessToken = tokenRes.data.access_token
+          const refreshToken = tokenRes.data.refresh_token
+
+          let email = ''
+          let displayName = ''
+          let avatarUrl: string | undefined
+
+          try {
+            const userInfoRes = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: { Authorization: `Bearer ${accessToken}` },
+              timeout: 6000,
+            })
+            email = userInfoRes.data?.email || ''
+            displayName = userInfoRes.data?.name || userInfoRes.data?.given_name || ''
+            avatarUrl = userInfoRes.data?.picture
+          } catch (userInfoErr: any) {
+            console.warn('[GmailOAuth] UserInfo fetch warning:', userInfoErr?.message)
+          }
+
+          let messagesTotal: number | undefined
+          let threadsTotal: number | undefined
+          let historyId: string | undefined
+
+          try {
+            const profileRes = await axios.get('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
+              headers: { Authorization: `Bearer ${accessToken}` },
+              timeout: 6000,
+            })
+            if (profileRes.data) {
+              if (!email) email = profileRes.data.emailAddress
+              messagesTotal = profileRes.data.messagesTotal
+              threadsTotal = profileRes.data.threadsTotal
+              historyId = profileRes.data.historyId
+            }
+          } catch (profileErr: any) {
+            console.warn('[GmailOAuth] Profile metadata fetch warning:', profileErr?.message)
+          }
+
+          const fallbackEmail = email || `gmail_${Date.now()}@gmail.com`
+          const fallbackName = displayName || fallbackEmail.split('@')[0]
+
+          resolve({
+            email: fallbackEmail,
+            name: fallbackName,
+            accessToken,
+            refreshToken,
+            avatarUrl,
+            messagesTotal,
+            threadsTotal,
+            historyId,
+          })
+        } catch (err: any) {
+          closeServerSafely()
+          console.error('[GmailOAuth] OAuth exchange error:', err?.response?.data || err?.message)
+          reject(new Error(err?.response?.data?.error_description || err?.message || 'Failed to exchange authorization code for Gmail access token.'))
+        }
+      })
+
+      server.listen(0, '127.0.0.1', () => {
+        const address = server.address()
+        const port = typeof address === 'object' && address ? address.port : 0
+        assignedRedirectUri = `http://127.0.0.1:${port}`
+
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(assignedRedirectUri)}&response_type=code&scope=${encodeURIComponent(GMAIL_DESKTOP_SCOPES)}&prompt=select_account&access_type=offline`
+
+        console.log('[GmailOAuth] Starting desktop flow on port:', port)
+        shell.openExternal(authUrl)
+
+        timeoutId = setTimeout(() => {
+          closeServerSafely()
+          reject(new Error('Gmail sign-in timed out. Please try again.'))
+        }, 3 * 60 * 1000)
+      })
+
+      server.on('error', (err) => {
+        closeServerSafely()
+        reject(new Error(`Failed to start OAuth loopback server: ${err.message}`))
+      })
+    })
+  }
+)
+
+ipcMain.handle(
+  'gmail:refresh-token',
+  async (_event, refreshToken: string, clientId?: string, clientSecret?: string) => {
+    if (!refreshToken) throw new Error('No refresh token provided.')
+    const cId = clientId?.trim() || DEFAULT_DESKTOP_CLIENT_ID
+    const cSec = clientSecret?.trim() || DEFAULT_DESKTOP_CLIENT_SECRET
+
+    const tokenParams = new URLSearchParams()
+    tokenParams.append('client_id', cId)
+    tokenParams.append('client_secret', cSec)
+    tokenParams.append('refresh_token', refreshToken)
+    tokenParams.append('grant_type', 'refresh_token')
+
+    const tokenRes = await axios.post<{
+      access_token: string
+      expires_in?: number
+      token_type?: string
+    }>('https://oauth2.googleapis.com/token', tokenParams.toString(), {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      timeout: 10000,
+    })
+
+    return {
+      accessToken: tokenRes.data.access_token,
+      expiresIn: tokenRes.data.expires_in,
+    }
   }
 )
 

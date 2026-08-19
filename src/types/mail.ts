@@ -5,6 +5,8 @@ export interface Attachment {
   inline?: boolean
   filename?: string
   contentId?: string
+  gmailAttachmentId?: string
+  messageId?: string
 }
 
 export interface Message {
@@ -28,6 +30,9 @@ export interface Message {
   contentError?: string | null
   mailboxResourceId?: string
   hostingerAccount?: 'DMBB' | 'DBB'
+  provider?: 'hostinger' | 'gmail'
+  gmailAccountId?: string
+  gmailMessageId?: string
 }
 
 export interface PaginationInfo {
@@ -39,8 +44,12 @@ export interface PaginationInfo {
 
 export interface Mailbox {
   resourceId: string
-  address: string,
-  hostingerAccount: 'DMBB' | 'DBB'
+  address: string
+  hostingerAccount?: 'DMBB' | 'DBB'
+  provider?: 'hostinger' | 'gmail'
+  gmailAccountId?: string
+  name?: string
+  avatarUrl?: string
 }
 
 export interface MailboxQuota {

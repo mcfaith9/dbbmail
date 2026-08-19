@@ -106,6 +106,23 @@ function getFileIcon(att: Attachment) {
 }
 
 async function getAttachmentBlob(att: Attachment): Promise<Blob> {
+  // -------------------------------------------------------------
+  // Gmail Attachment Retrieval
+  // -------------------------------------------------------------
+  if (props.message?.provider === 'gmail' || props.message?.gmailAccountId || att.gmailAttachmentId) {
+    const accountId = props.message?.gmailAccountId || 'gmail_acc_primary'
+    const messageId = String(props.message?.gmailMessageId || props.message?.id || props.message?.uid || att.messageId || '')
+    const attachmentId = att.gmailAttachmentId || att.id
+    const mime = att.contentType || 'application/octet-stream'
+
+    if (window.gmail?.getAttachmentBlob) {
+      return await window.gmail.getAttachmentBlob(accountId, messageId, attachmentId, mime)
+    }
+  }
+
+  // -------------------------------------------------------------
+  // Hostinger Attachment Retrieval (Preserved)
+  // -------------------------------------------------------------
   const mailboxResourceId = props.message?.mailboxResourceId || 'res-dbb-1'
   const folder = (props.message?.path || 'INBOX').toUpperCase()
   const uid = Number(props.message?.uid || 101)
@@ -236,7 +253,7 @@ async function initializeDocumentViewer() {
     disableFullscreen: false,
   })
 
-  udocViewer.setActiveTool({ kind: 'hand' });
+  udocViewer.setActiveTool({ kind: 'hand' })
 
   udocViewer.on('error', ({ error, phase }) => {
     console.error('[docMentis] Viewer error:', {
