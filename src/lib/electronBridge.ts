@@ -1,4 +1,7 @@
 import axios from 'axios'
+import { gmailService } from '@/services/gmailService'
+import type { MailFolder } from '@/types/mail'
+import type { GmailAccount } from '@/types/gmail'
 
 if (typeof window !== 'undefined') {
   if (!window.ipcRenderer) {
@@ -88,6 +91,31 @@ if (typeof window !== 'undefined') {
         })
         return res.data
       },
+    }
+  }
+
+  if (!window.gmail) {
+    window.gmail = {
+      getAccounts: () => gmailService.getAccounts(),
+      getAccount: (id: string) => gmailService.getAccount(id),
+      addAccount: (account: Omit<GmailAccount, 'id' | 'connectedAt'>) => gmailService.addAccount(account),
+      removeAccount: (id: string) => gmailService.removeAccount(id),
+      getProfile: (accessToken: string) => gmailService.getProfile(accessToken),
+      getMessages: (
+        accountId: string,
+        folder: MailFolder,
+        page = 1,
+        perPage = 10,
+        forceRefresh = false
+      ) => gmailService.getMessages(accountId, folder, page, perPage, forceRefresh),
+      getMessageContent: (accountId: string, messageId: string, forceRefresh = false) =>
+        gmailService.getMessageContent(accountId, messageId, forceRefresh),
+      getAttachmentBlob: (
+        accountId: string,
+        messageId: string,
+        attachmentId: string,
+        contentType?: string
+      ) => gmailService.getAttachmentBlob(accountId, messageId, attachmentId, contentType),
     }
   }
 }

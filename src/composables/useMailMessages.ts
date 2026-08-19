@@ -1,10 +1,14 @@
 import { ref } from 'vue'
 import type { Message, PaginationInfo, MailFolder } from '@/types/mail'
+import type { GmailAccount } from '@/types/gmail'
 import { cacheService } from '@/services/cacheService'
+import { gmailService } from '@/services/gmailService'
 
 export function useMailMessages() {
   const selectedMailbox = ref<string | null>(null)
   const selectedMailboxResourceId = ref<string | null>(null)
+  const selectedProvider = ref<'hostinger' | 'gmail'>('hostinger')
+  const selectedGmailAccountId = ref<string | null>(null)
   const activeFolder = ref<MailFolder>('INBOX')
   const activeMessage = ref<Message | null>(null)
 
@@ -19,9 +23,8 @@ export function useMailMessages() {
   const messagesError = ref<string | null>(null)
 
   type HostingerAccount = 'DMBB' | 'DBB'
-  const selectedHostingerAccount =
-    ref<HostingerAccount | null>(null)
-    
+  const selectedHostingerAccount = ref<HostingerAccount | null>(null)
+
   async function fetchMessages(
     mailboxResourceId: string,
     page = pagination.value.page,
@@ -32,6 +35,35 @@ export function useMailMessages() {
     messagesLoading.value = true
     messagesError.value = null
 
+    // -------------------------------------------------------------
+    // Gmail Provider Handling
+    // -------------------------------------------------------------
+    if (selectedProvider.value === 'gmail') {
+      try {
+        const accountId = selectedGmailAccountId.value || mailboxResourceId
+        const result = await gmailService.getMessages(
+          accountId,
+          folder,
+          page,
+          perPage,
+          forceRefresh
+        )
+
+        messages.value = result.data
+        pagination.value = result.pagination
+      } catch (err: any) {
+        console.error('[Gmail] Message fetch error:', err)
+        messagesError.value = err?.message || 'Failed to load Gmail messages'
+        messages.value = []
+      } finally {
+        messagesLoading.value = false
+      }
+      return
+    }
+
+    // -------------------------------------------------------------
+    // Hostinger Provider Handling (Existing Implementation Preserved)
+    // -------------------------------------------------------------
     try {
       const hostingerAccount = selectedHostingerAccount.value
 
@@ -51,8 +83,7 @@ export function useMailMessages() {
       let response
 
       if (forceRefresh) {
-        // IMPORTANT:
-        // Refresh must bypass the existing cache.
+        // IMPORTANT: Refresh must bypass the existing cache.
         response = await window.hostinger.getMailboxMessages(
           mailboxResourceId,
           folder,
@@ -116,6 +147,7 @@ export function useMailMessages() {
       list.forEach((msg) => {
         msg.mailboxResourceId = mailboxResourceId
         msg.hostingerAccount = hostingerAccount
+        msg.provider = 'hostinger'
       })
 
       messages.value = list
@@ -138,20 +170,33 @@ export function useMailMessages() {
     mailboxResourceId: string,
     hostingerAccount: HostingerAccount
   ) {
+    selectedProvider.value = 'hostinger'
+    selectedGmailAccountId.value = null
     selectedMailbox.value = email
-
-    selectedMailboxResourceId.value =
-      mailboxResourceId
-
-    selectedHostingerAccount.value =
-      hostingerAccount
-
+    selectedMailboxResourceId.value = mailboxResourceId
+    selectedHostingerAccount.value = hostingerAccount
     activeMessage.value = null
-
     pagination.value.page = 1
 
     await fetchMessages(
       mailboxResourceId,
+      1,
+      pagination.value.perPage,
+      activeFolder.value
+    )
+  }
+
+  async function handleGmailAccountSelected(account: GmailAccount) {
+    selectedProvider.value = 'gmail'
+    selectedGmailAccountId.value = account.id
+    selectedMailbox.value = account.email
+    selectedMailboxResourceId.value = account.id
+    selectedHostingerAccount.value = null
+    activeMessage.value = null
+    pagination.value.page = 1
+
+    await fetchMessages(
+      account.id,
       1,
       pagination.value.perPage,
       activeFolder.value
@@ -232,6 +277,37 @@ export function useMailMessages() {
   async function fetchMessageContent(message: Message) {
     if (!message) return
 
+    // -------------------------------------------------------------
+    // Gmail Message Content Handling
+    // -------------------------------------------------------------
+    if (message.provider === 'gmail' || selectedProvider.value === 'gmail') {
+      const accountId = message.gmailAccountId || selectedGmailAccountId.value || selectedMailboxResourceId.value
+      const messageId = String(message.gmailMessageId || message.id || message.uid)
+
+      if (!accountId || !messageId) return
+
+      message.contentLoading = true
+      message.contentError = null
+
+      try {
+        const content = await gmailService.getMessageContent(accountId, messageId)
+        if (content.text !== undefined) message.text = content.text
+        if (content.html !== undefined) message.html = content.html
+        if (content.attachments && content.attachments.length > 0) {
+          message.attachments = content.attachments
+        }
+      } catch (err: any) {
+        console.error('[Gmail] Failed to fetch message content:', err)
+        message.contentError = err?.message || 'Failed to load Gmail content.'
+      } finally {
+        message.contentLoading = false
+      }
+      return
+    }
+
+    // -------------------------------------------------------------
+    // Hostinger Message Content Handling (Preserved)
+    // -------------------------------------------------------------
     const mailboxResourceId = selectedMailboxResourceId.value
     const hostingerAccount = selectedHostingerAccount.value
     const folder = activeFolder.value || 'INBOX'
@@ -317,6 +393,8 @@ export function useMailMessages() {
   return {
     selectedMailbox,
     selectedMailboxResourceId,
+    selectedProvider,
+    selectedGmailAccountId,
     activeFolder,
     activeMessage,
     messages,
@@ -325,11 +403,12 @@ export function useMailMessages() {
     messagesError,
     fetchMessages,
     handleMailboxSelected,
+    handleGmailAccountSelected,
     handleFolderChange,
     handleMessageSelected,
     handlePageChange,
     handlePerPageChange,
     handleRefresh,
-    fetchMessageContent
+    fetchMessageContent,
   }
 }

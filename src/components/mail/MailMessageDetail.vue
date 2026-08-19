@@ -4,6 +4,7 @@ import DOMPurify from 'dompurify'
 import type { Message } from '@/types/mail'
 import { Mail, Clock, UserRound, X } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { useMailFormatting } from '@/composables/useMailFormatting'
 import MailAttachments from '@/components/mail/MailAttachments.vue'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -42,15 +43,26 @@ const sanitizedHtml = computed(() => {
     <!-- Detail Header -->
     <div class="flex items-start justify-between pb-4 border-b gap-4">
       <div>
-        <div class="flex items-center gap-2 mb-1">
+        <div class="flex items-center gap-2 mb-1 flex-wrap">
+          <Badge
+            v-if="activeMessage.provider === 'gmail'"
+            variant="outline"
+            class="text-[10px] uppercase tracking-wider font-semibold border-red-500/30 text-red-600 dark:text-red-400 bg-red-500/10 px-2 py-0.5"
+          >
+            Gmail (Read-Only)
+          </Badge>
           <span
-            v-if="activeMessage.path"
+            v-else-if="activeMessage.path"
             class="text-xs uppercase tracking-wider font-semibold bg-muted text-muted-foreground px-2 py-0.5 rounded"
           >
             {{ activeMessage.path }}
           </span>
+
           <span v-if="activeMessage.uid" class="text-xs text-muted-foreground">
             UID: {{ activeMessage.uid }}
+          </span>
+          <span v-else-if="activeMessage.id" class="text-xs text-muted-foreground font-mono">
+            ID: {{ activeMessage.id }}
           </span>
         </div>
         <h2 class="text-md font-bold text-foreground leading-snug">

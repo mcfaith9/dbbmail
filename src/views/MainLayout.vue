@@ -12,15 +12,21 @@ const isDashboard = computed(() => {
   return route.path === '/dashboard' || route.name === 'dashboard'
 })
 
-function handleMailboxSelected(email: string, resourceId: string, hostingerAccount: 'DMBB' | 'DBB') {
+function handleMailboxSelected(
+  email: string,
+  resourceId: string,
+  hostingerAccount: 'DMBB' | 'DBB',
+  provider?: 'hostinger' | 'gmail',
+  gmailAccountId?: string
+) {
   // If not on dashboard, navigate to dashboard first
   if (router.currentRoute.value.path !== '/dashboard') {
     router.push('/dashboard')
   }
-  // Store or emit selected mailbox state if needed
+  // Store or emit selected mailbox state
   window.dispatchEvent(
     new CustomEvent('mailbox-selected-event', {
-      detail: { email, resourceId, hostingerAccount },
+      detail: { email, resourceId, hostingerAccount, provider, gmailAccountId },
     })
   )
 }

@@ -29,6 +29,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkForUpdates: () => ipcRenderer.invoke('updater:check'),
   downloadUpdate: () => ipcRenderer.invoke('updater:download'),
   quitAndInstall: () => ipcRenderer.invoke('updater:quit-and-install'),
+  signInWithGmail: (options?: { clientId?: string; clientSecret?: string }) =>
+    ipcRenderer.invoke('gmail:oauth-login', options),
+  refreshGmailToken: (refreshToken: string, clientId?: string, clientSecret?: string) =>
+    ipcRenderer.invoke('gmail:refresh-token', refreshToken, clientId, clientSecret),
   onUpdateStatus: (callback: (data: any) => void) => {
     const subscription = (_event: any, data: any) => callback(data)
     ipcRenderer.on('updater:status', subscription)
