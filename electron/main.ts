@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import http from 'node:http'
 import axios from 'axios'
-import { app, BrowserWindow, ipcMain, Menu, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -184,6 +184,7 @@ ipcMain.handle(
 // -------------------------------------------------------------
 const DEFAULT_DESKTOP_CLIENT_ID = ''
 const DEFAULT_DESKTOP_CLIENT_SECRET = ''
+
 const GMAIL_DESKTOP_SCOPES = [
   'https://www.googleapis.com/auth/gmail.readonly',
   'https://www.googleapis.com/auth/userinfo.profile',
@@ -193,18 +194,28 @@ const GMAIL_DESKTOP_SCOPES = [
 ipcMain.handle(
   'gmail:oauth-login',
   async (_event, options?: { clientId?: string; clientSecret?: string }) => {
-    const clientId = options?.clientId?.trim() || DEFAULT_DESKTOP_CLIENT_ID
-    const clientSecret = options?.clientSecret?.trim() || DEFAULT_DESKTOP_CLIENT_SECRET
+    const clientId =
+      options?.clientId?.trim() || DEFAULT_DESKTOP_CLIENT_ID
+
+    const clientSecret =
+      options?.clientSecret?.trim() || DEFAULT_DESKTOP_CLIENT_SECRET
 
     return new Promise((resolve, reject) => {
       let serverClosed = false
       let timeoutId: NodeJS.Timeout | null = null
       let assignedRedirectUri = ''
+      let oauthWindow: BrowserWindow | null = null
+      let oauthCompleted = false
 
       const closeServerSafely = () => {
         if (!serverClosed) {
           serverClosed = true
-          if (timeoutId) clearTimeout(timeoutId)
+
+          if (timeoutId) {
+            clearTimeout(timeoutId)
+            timeoutId = null
+          }
+
           try {
             server.close()
           } catch {
@@ -213,137 +224,354 @@ ipcMain.handle(
         }
       }
 
+      const closeOAuthWindowSafely = () => {
+        if (oauthWindow && !oauthWindow.isDestroyed()) {
+          oauthWindow.close()
+        }
+
+        oauthWindow = null
+      }
+
       const server = http.createServer(async (req, res) => {
         try {
           const reqUrl = req.url || '/'
-          const parsedUrl = new URL(reqUrl, 'http://127.0.0.1')
+          const parsedUrl = new URL(
+            reqUrl,
+            'http://127.0.0.1'
+          )
+
           const code = parsedUrl.searchParams.get('code')
           const error = parsedUrl.searchParams.get('error')
-          const errorDescription = parsedUrl.searchParams.get('error_description')
+          const errorDescription =
+            parsedUrl.searchParams.get('error_description')
 
+          // ---------------------------------------------------------
+          // Google returned an OAuth error
+          // Example: access_denied
+          // ---------------------------------------------------------
           if (error) {
-            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+            oauthCompleted = true
+
+            res.writeHead(200, {
+              'Content-Type': 'text/html; charset=utf-8',
+            })
+
             res.end(`
               <!DOCTYPE html>
               <html>
               <head>
-              <meta charset="utf-8">
-              <title>DBB Mail</title>
-              <style>
-              *{box-sizing:border-box}
-              body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;background:#0a0a0a;color:#fafafa}
-              .card{width:100%;max-width:420px;padding:32px;text-align:center;background:#171717;border:1px solid #262626;border-radius:14px}
-              .icon{width:44px;height:44px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;border:1px solid #404040;border-radius:50%;color:#a3a3a3;font-size:20px}
-              h1{margin:0 0 8px;font-size:20px;font-weight:600}
-              p{margin:0 0 18px;color:#a3a3a3;font-size:14px;line-height:1.5}
-              .error{margin-bottom:18px;padding:10px 12px;background:#1c1c1c;border:1px solid #303030;border-radius:8px;color:#a3a3a3;font-size:12px}
-              .badge{display:inline-block;padding:6px 11px;background:#1c1c1c;border:1px solid #303030;border-radius:999px;color:#a3a3a3;font-size:12px}
-              </style>
+                <meta charset="utf-8">
+                <title>DBB Mail</title>
               </head>
-              <body>
-              <div class="card">
-              <div class="icon">!</div>
-              <h1>Authentication Not Completed</h1>
-              <p>Google sign-in was not completed. Your DBB Mail account was not connected.</p>
-              <div class="error">${errorDescription || error || 'Google authentication was cancelled.'}</div>
-              <div class="badge">You can close this tab and return to DBB Mail</div>
-              </div>
+              <body style="
+                margin:0;
+                height:100vh;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                font-family:system-ui,sans-serif;
+                background:#0a0a0a;
+                color:#fafafa;
+              ">
+                <div style="
+                  width:100%;
+                  max-width:420px;
+                  padding:32px;
+                  text-align:center;
+                  background:#171717;
+                  border:1px solid #262626;
+                  border-radius:14px;
+                ">
+                  <div style="
+                    width:44px;
+                    height:44px;
+                    margin:0 auto 16px;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    border:1px solid #404040;
+                    border-radius:50%;
+                    color:#a3a3a3;
+                    font-size:20px;
+                  ">!</div>
+
+                  <h1 style="
+                    margin:0 0 8px;
+                    font-size:20px;
+                    font-weight:600;
+                  ">
+                    Authentication Not Completed
+                  </h1>
+
+                  <p style="
+                    margin:0 0 18px;
+                    color:#a3a3a3;
+                    font-size:14px;
+                    line-height:1.5;
+                  ">
+                    Google sign-in was not completed.
+                    Your DBB Mail account was not connected.
+                  </p>
+
+                  <div style="
+                    margin-bottom:18px;
+                    padding:10px 12px;
+                    background:#1c1c1c;
+                    border:1px solid #303030;
+                    border-radius:8px;
+                    color:#a3a3a3;
+                    font-size:12px;
+                  ">
+                    ${errorDescription || error || 'Google authentication was cancelled.'}
+                  </div>
+
+                  <div style="
+                    display:inline-block;
+                    padding:6px 11px;
+                    background:#1c1c1c;
+                    border:1px solid #303030;
+                    border-radius:999px;
+                    color:#a3a3a3;
+                    font-size:12px;
+                  ">
+                    You can close this window
+                  </div>
+                </div>
               </body>
               </html>
             `)
+
             closeServerSafely()
-            return reject(new Error(errorDescription || error || 'Google authentication was cancelled.'))
+            closeOAuthWindowSafely()
+
+            return reject(
+              new Error(
+                errorDescription ||
+                  error ||
+                  'Google authentication was cancelled.'
+              )
+            )
           }
 
+          // ---------------------------------------------------------
+          // No authorization code
+          // ---------------------------------------------------------
           if (!code) {
-            res.writeHead(400, { 'Content-Type': 'text/plain' })
+            res.writeHead(400, {
+              'Content-Type': 'text/plain',
+            })
+
             res.end('Missing OAuth authorization code.')
+
             return
           }
 
-          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+          // ---------------------------------------------------------
+          // OAuth succeeded
+          // ---------------------------------------------------------
+          oauthCompleted = true
+
+          res.writeHead(200, {
+            'Content-Type': 'text/html; charset=utf-8',
+          })
+
           res.end(`
             <!DOCTYPE html>
             <html>
             <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width,initial-scale=1">
-            <title>DBB Mail</title>
-            <style>
-            *{box-sizing:border-box}body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#0a0a0a;color:#fafafa}.card{width:100%;max-width:420px;padding:32px;text-align:center;background:#171717;border:1px solid #262626;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.25)}.icon{width:44px;height:44px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;border:1px solid #404040;border-radius:50%;color:#fafafa;font-size:19px;font-weight:600;background:#1c1c1c}h1{margin:0 0 8px;font-size:20px;font-weight:600;letter-spacing:-.02em}p{margin:0 0 18px;color:#a3a3a3;font-size:14px;line-height:1.5}.success{margin-bottom:18px;padding:10px 12px;background:#1c1c1c;border:1px solid #303030;border-radius:8px;color:#a3a3a3;font-size:12px;line-height:1.5}.badge{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;background:#1c1c1c;border:1px solid #303030;border-radius:999px;color:#a3a3a3;font-size:12px}.dot{width:6px;height:6px;border-radius:50%;background:#a3a3a3}
-            </style>
+              <meta charset="utf-8">
+              <meta name="viewport"
+                content="width=device-width,initial-scale=1">
+              <title>DBB Mail</title>
             </head>
-            <body>
-            <div class="card">
-            <div class="icon">✓</div>
-            <h1>Authentication Successful</h1>
-            <p>Your Gmail account has been successfully connected to DBB Mail with read-only access.</p>
-            <div class="success">Your Gmail account is now ready to use in DBB Mail.</div>
-            <div class="badge"><span class="dot"></span>You can close this tab and return to DBB Mail</div>
-            </div>
+
+            <body style="
+              margin:0;
+              height:100vh;
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              padding:20px;
+              font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+              background:#0a0a0a;
+              color:#fafafa;
+            ">
+              <div style="
+                width:100%;
+                max-width:420px;
+                padding:32px;
+                text-align:center;
+                background:#171717;
+                border:1px solid #262626;
+                border-radius:14px;
+              ">
+                <div style="
+                  width:44px;
+                  height:44px;
+                  margin:0 auto 16px;
+                  display:flex;
+                  align-items:center;
+                  justify-content:center;
+                  border:1px solid #404040;
+                  border-radius:50%;
+                  color:#fafafa;
+                  font-size:19px;
+                  font-weight:600;
+                  background:#1c1c1c;
+                ">
+                  ✓
+                </div>
+
+                <h1 style="
+                  margin:0 0 8px;
+                  font-size:20px;
+                  font-weight:600;
+                ">
+                  Authentication Successful
+                </h1>
+
+                <p style="
+                  margin:0;
+                  color:#a3a3a3;
+                  font-size:14px;
+                  line-height:1.5;
+                ">
+                  Your Gmail account has been successfully
+                  connected to DBB Mail with read-only access.
+                </p>
+              </div>
             </body>
             </html>
           `)
 
+          // Stop accepting another OAuth request.
           closeServerSafely()
 
+          // Close the Google OAuth window automatically.
+          closeOAuthWindowSafely()
+
+          // ---------------------------------------------------------
+          // Exchange authorization code for tokens
+          // ---------------------------------------------------------
           const tokenParams = new URLSearchParams()
+
           tokenParams.append('code', code)
           tokenParams.append('client_id', clientId)
           tokenParams.append('client_secret', clientSecret)
-          tokenParams.append('redirect_uri', assignedRedirectUri)
-          tokenParams.append('grant_type', 'authorization_code')
+          tokenParams.append(
+            'redirect_uri',
+            assignedRedirectUri
+          )
+          tokenParams.append(
+            'grant_type',
+            'authorization_code'
+          )
 
           const tokenRes = await axios.post<{
             access_token: string
             refresh_token?: string
             expires_in?: number
             token_type?: string
-          }>('https://oauth2.googleapis.com/token', tokenParams.toString(), {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            timeout: 10000,
-          })
+          }>(
+            'https://oauth2.googleapis.com/token',
+            tokenParams.toString(),
+            {
+              headers: {
+                'Content-Type':
+                  'application/x-www-form-urlencoded',
+              },
+              timeout: 10000,
+            }
+          )
 
-          const accessToken = tokenRes.data.access_token
-          const refreshToken = tokenRes.data.refresh_token
+          const accessToken =
+            tokenRes.data.access_token
 
+          const refreshToken =
+            tokenRes.data.refresh_token
+
+          // ---------------------------------------------------------
+          // Get Google account information
+          // ---------------------------------------------------------
           let email = ''
           let displayName = ''
           let avatarUrl: string | undefined
 
           try {
-            const userInfoRes = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
-              headers: { Authorization: `Bearer ${accessToken}` },
-              timeout: 6000,
-            })
-            email = userInfoRes.data?.email || ''
-            displayName = userInfoRes.data?.name || userInfoRes.data?.given_name || ''
-            avatarUrl = userInfoRes.data?.picture
+            const userInfoRes = await axios.get(
+              'https://www.googleapis.com/oauth2/v3/userinfo',
+              {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                },
+                timeout: 6000,
+              }
+            )
+
+            email =
+              userInfoRes.data?.email || ''
+
+            displayName =
+              userInfoRes.data?.name ||
+              userInfoRes.data?.given_name ||
+              ''
+
+            avatarUrl =
+              userInfoRes.data?.picture
           } catch (userInfoErr: any) {
-            console.warn('[GmailOAuth] UserInfo fetch warning:', userInfoErr?.message)
+            console.warn(
+              '[GmailOAuth] UserInfo fetch warning:',
+              userInfoErr?.message
+            )
           }
 
+          // ---------------------------------------------------------
+          // Get Gmail profile
+          // ---------------------------------------------------------
           let messagesTotal: number | undefined
           let threadsTotal: number | undefined
           let historyId: string | undefined
 
           try {
-            const profileRes = await axios.get('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
-              headers: { Authorization: `Bearer ${accessToken}` },
-              timeout: 6000,
-            })
+            const profileRes = await axios.get(
+              'https://gmail.googleapis.com/gmail/v1/users/me/profile',
+              {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                },
+                timeout: 6000,
+              }
+            )
+
             if (profileRes.data) {
-              if (!email) email = profileRes.data.emailAddress
-              messagesTotal = profileRes.data.messagesTotal
-              threadsTotal = profileRes.data.threadsTotal
-              historyId = profileRes.data.historyId
+              if (!email) {
+                email =
+                  profileRes.data.emailAddress
+              }
+
+              messagesTotal =
+                profileRes.data.messagesTotal
+
+              threadsTotal =
+                profileRes.data.threadsTotal
+
+              historyId =
+                profileRes.data.historyId
             }
           } catch (profileErr: any) {
-            console.warn('[GmailOAuth] Profile metadata fetch warning:', profileErr?.message)
+            console.warn(
+              '[GmailOAuth] Profile metadata fetch warning:',
+              profileErr?.message
+            )
           }
 
-          const fallbackEmail = email || `gmail_${Date.now()}@gmail.com`
-          const fallbackName = displayName || fallbackEmail.split('@')[0]
+          const fallbackEmail =
+            email ||
+            `gmail_${Date.now()}@gmail.com`
+
+          const fallbackName =
+            displayName ||
+            fallbackEmail.split('@')[0]
 
           resolve({
             email: fallbackEmail,
@@ -356,31 +584,135 @@ ipcMain.handle(
             historyId,
           })
         } catch (err: any) {
+          oauthCompleted = true
+
           closeServerSafely()
-          console.error('[GmailOAuth] OAuth exchange error:', err?.response?.data || err?.message)
-          reject(new Error(err?.response?.data?.error_description || err?.message || 'Failed to exchange authorization code for Gmail access token.'))
+          closeOAuthWindowSafely()
+
+          console.error(
+            '[GmailOAuth] OAuth exchange error:',
+            err?.response?.data || err?.message
+          )
+
+          reject(
+            new Error(
+              err?.response?.data?.error_description ||
+                err?.message ||
+                'Failed to exchange authorization code for Gmail access token.'
+            )
+          )
         }
       })
 
-      server.listen(0, '127.0.0.1', () => {
-        const address = server.address()
-        const port = typeof address === 'object' && address ? address.port : 0
-        assignedRedirectUri = `http://127.0.0.1:${port}`
+      // -------------------------------------------------------------
+      // Start local OAuth callback server
+      // -------------------------------------------------------------
+      server.listen(
+        0,
+        '127.0.0.1',
+        () => {
+          const address = server.address()
 
-        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(assignedRedirectUri)}&response_type=code&scope=${encodeURIComponent(GMAIL_DESKTOP_SCOPES)}&prompt=select_account&access_type=offline`
+          const port =
+            typeof address === 'object' &&
+            address
+              ? address.port
+              : 0
 
-        console.log('[GmailOAuth] Starting desktop flow on port:', port)
-        shell.openExternal(authUrl)
+          assignedRedirectUri =
+            `http://127.0.0.1:${port}`
 
-        timeoutId = setTimeout(() => {
-          closeServerSafely()
-          reject(new Error('Gmail sign-in timed out. Please try again.'))
-        }, 3 * 60 * 1000)
-      })
+          const authUrl =
+            `https://accounts.google.com/o/oauth2/v2/auth` +
+            `?client_id=${encodeURIComponent(clientId)}` +
+            `&redirect_uri=${encodeURIComponent(assignedRedirectUri)}` +
+            `&response_type=code` +
+            `&scope=${encodeURIComponent(GMAIL_DESKTOP_SCOPES)}` +
+            `&prompt=select_account` +
+            `&access_type=offline`
 
+          console.log(
+            '[GmailOAuth] Starting desktop flow on port:',
+            port
+          )
+
+          // ---------------------------------------------------------
+          // Create Google OAuth browser window
+          // ---------------------------------------------------------
+          oauthWindow = new BrowserWindow({
+            width: 500,
+            height: 700,
+            resizable: false,
+            title: 'Sign in with Google',
+            webPreferences: {
+              nodeIntegration: false,
+              contextIsolation: true,
+            },
+          })
+
+          oauthWindow.loadURL(authUrl)
+
+          // ---------------------------------------------------------
+          // AUTOMATIC CANCELLATION DETECTION
+          // ---------------------------------------------------------
+          oauthWindow.on('closed', () => {
+            oauthWindow = null
+
+            // If OAuth wasn't completed, closing the window
+            // means the user cancelled the sign-in.
+            if (!oauthCompleted && !serverClosed) {
+              console.log(
+                '[GmailOAuth] OAuth window closed by user.'
+              )
+
+              closeServerSafely()
+
+              reject(
+                new Error(
+                  'Google sign-in was cancelled.'
+                )
+              )
+            }
+          })
+
+          // ---------------------------------------------------------
+          // Timeout
+          // ---------------------------------------------------------
+          timeoutId = setTimeout(() => {
+            if (oauthCompleted) return
+
+            console.log(
+              '[GmailOAuth] OAuth flow timed out.'
+            )
+
+            oauthCompleted = true
+
+            closeServerSafely()
+            closeOAuthWindowSafely()
+
+            reject(
+              new Error(
+                'Gmail sign-in timed out. Please try again.'
+              )
+            )
+          }, 3 * 60 * 1000)
+        }
+      )
+
+      // -------------------------------------------------------------
+      // Local server error
+      // -------------------------------------------------------------
       server.on('error', (err) => {
+        oauthCompleted = true
+
         closeServerSafely()
-        reject(new Error(`Failed to start OAuth loopback server: ${err.message}`))
+        closeOAuthWindowSafely()
+
+        reject(
+          new Error(
+            `Failed to start OAuth loopback server: ${err.message}`
+          )
+        )
       })
     })
   }
@@ -519,11 +851,41 @@ app.on('window-all-closed', () => {
 })
 
 app.on('activate', () => {
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
+  // On macOS, recreate the window if there are no windows.
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow()
   }
 })
 
-app.whenReady().then(createWindow)
+// -------------------------------------------------------------
+// Prevent multiple Electron instances
+// -------------------------------------------------------------
+const gotTheLock = app.requestSingleInstanceLock()
+
+if (!gotTheLock) {
+  // Another DBB Mail instance is already running.
+  app.quit()
+} else {
+  // A second launch will come here instead of creating
+  // another DBB Mail window.
+  app.on('second-instance', () => {
+    if (!win || win.isDestroyed()) {
+      return
+    }
+
+    if (win.isMinimized()) {
+      win.restore()
+    }
+
+    if (!win.isVisible()) {
+      win.show()
+    }
+
+    win.focus()
+  })
+
+  // Start DBB Mail only once.
+  app.whenReady().then(() => {
+    createWindow()
+  })
+}
