@@ -30,6 +30,30 @@ if (typeof window !== 'undefined') {
       downloadUpdate: async () => {},
       quitAndInstall: () => {},
       onUpdateStatus: () => () => {},
+      refreshGmailToken: async (refreshToken: string, clientId?: string, clientSecret?: string) => {
+        const cId = clientId?.trim() || '57949158433-qo7d4ru9buhpnmhkmj1k35m5jpm9errl.apps.googleusercontent.com'
+        const tokenParams = new URLSearchParams()
+        tokenParams.append('client_id', cId)
+        if (clientSecret?.trim()) {
+          tokenParams.append('client_secret', clientSecret.trim())
+        }
+        tokenParams.append('refresh_token', refreshToken)
+        tokenParams.append('grant_type', 'refresh_token')
+
+        const res = await axios.post<{
+          access_token: string
+          expires_in?: number
+          token_type?: string
+        }>('https://oauth2.googleapis.com/token', tokenParams.toString(), {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          timeout: 10000,
+        })
+
+        return {
+          accessToken: res.data.access_token,
+          expiresIn: res.data.expires_in,
+        }
+      },
     }
   }
 

@@ -490,6 +490,9 @@ ipcMain.handle(
           const refreshToken =
             tokenRes.data.refresh_token
 
+          const expiresIn =
+            tokenRes.data.expires_in
+
           // ---------------------------------------------------------
           // Get Google account information
           // ---------------------------------------------------------
@@ -578,6 +581,7 @@ ipcMain.handle(
             name: fallbackName,
             accessToken,
             refreshToken,
+            expiresIn,
             avatarUrl,
             messagesTotal,
             threadsTotal,

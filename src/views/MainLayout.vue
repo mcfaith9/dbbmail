@@ -17,7 +17,8 @@ function handleMailboxSelected(
   resourceId: string,
   hostingerAccount: 'DMBB' | 'DBB',
   provider?: 'hostinger' | 'gmail',
-  gmailAccountId?: string
+  gmailAccountId?: string,
+  folder?: string
 ) {
   // If not on dashboard, navigate to dashboard first
   if (router.currentRoute.value.path !== '/dashboard') {
@@ -26,7 +27,7 @@ function handleMailboxSelected(
   // Store or emit selected mailbox state
   window.dispatchEvent(
     new CustomEvent('mailbox-selected-event', {
-      detail: { email, resourceId, hostingerAccount, provider, gmailAccountId },
+      detail: { email, resourceId, hostingerAccount, provider, gmailAccountId, folder },
     })
   )
 }

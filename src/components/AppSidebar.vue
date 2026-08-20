@@ -14,6 +14,10 @@ import {
   Trash2,
   ShieldCheck,
   Globe,
+  Inbox,
+  Send,
+  MailWarning,
+  ChevronDown,
 } from "@lucide/vue"
 
 import {
@@ -55,7 +59,7 @@ import NavUser from '@/components/NavUser.vue'
 import MailboxQuota from '@/components/mail/MailboxQuota.vue'
 import AddGmailAccountDialog from '@/components/mail/AddGmailAccountDialog.vue'
 
-import type { Mailbox } from '@/types/mail'
+import type { Mailbox, MailFolder } from '@/types/mail'
 import type { GmailAccount } from '@/types/gmail'
 import { mailboxService } from '@/services/mailboxService'
 import { gmailService } from '@/services/gmailService'
@@ -137,6 +141,14 @@ const selectedMailbox = ref<string | null>(null)
 const selectedMailboxResourceId = ref<string | null>(null)
 const selectedHostingerAccount = ref<'DMBB' | 'DBB' | null>(null)
 const selectedProvider = ref<'hostinger' | 'gmail'>('hostinger')
+const activeFolder = ref<MailFolder>('INBOX')
+
+function handleFolderEvent(e: Event) {
+  const customEvent = e as CustomEvent<{ folder: MailFolder }>
+  if (customEvent.detail?.folder) {
+    activeFolder.value = customEvent.detail.folder
+  }
+}
 
 function handleUnreadUpdate(e: Event) {
   const customEvent = e as CustomEvent<{ mailboxResourceId: string; count: number }>
@@ -239,11 +251,14 @@ function selectMailbox(mail: Mailbox) {
   )
 }
 
-function selectGmailAccount(account: GmailAccount) {
+function selectGmailAccount(account: GmailAccount, folder?: MailFolder) {
   selectedProvider.value = 'gmail'
   selectedMailbox.value = account.email
   selectedMailboxResourceId.value = account.id
   selectedHostingerAccount.value = null
+  if (folder) {
+    activeFolder.value = folder
+  }
 
   emit(
     'mailbox-selected',
@@ -251,7 +266,8 @@ function selectGmailAccount(account: GmailAccount) {
     account.id,
     'DMBB',
     'gmail',
-    account.id
+    account.id,
+    activeFolder.value || 'INBOX'
   )
 }
 
@@ -302,7 +318,8 @@ const emit = defineEmits<{
     mailboxResourceId: string,
     hostingerAccount: 'DMBB' | 'DBB',
     provider?: 'hostinger' | 'gmail',
-    gmailAccountId?: string
+    gmailAccountId?: string,
+    folder?: MailFolder
   ): void
 }>()
 
@@ -316,10 +333,12 @@ onMounted(() => {
   fetchMailboxes()
   refreshGmailAccounts()
   window.addEventListener('mailbox-unread-update', handleUnreadUpdate)
+  window.addEventListener('folder-selected-event', handleFolderEvent)
 })
 
 onUnmounted(() => {
   window.removeEventListener('mailbox-unread-update', handleUnreadUpdate)
+  window.removeEventListener('folder-selected-event', handleFolderEvent)
 })
 </script>
 
@@ -340,7 +359,7 @@ onUnmounted(() => {
               <a href="#">
                 <div class="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                   <img
-                    src="@/assets/images/dbblogo.png"
+                    src="/dbblogo.png"
                     alt="DBB Logo"
                     class="h-auto w-30 object-contain"
                   />

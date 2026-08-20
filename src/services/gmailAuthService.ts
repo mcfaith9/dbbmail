@@ -24,10 +24,15 @@ declare global {
         name: string
         accessToken: string
         refreshToken?: string
+        expiresIn?: number
         avatarUrl?: string
         messagesTotal?: number
         threadsTotal?: number
         historyId?: string
+      }>
+      refreshGmailToken?: (refreshToken: string, clientId?: string, clientSecret?: string) => Promise<{
+        accessToken: string
+        expiresIn?: number
       }>
       onUpdateStatus: (callback: (data: any) => void) => () => void
     }
@@ -118,6 +123,7 @@ export async function signInWithGmailOAuth(
       name: electronResult.name,
       accessToken: electronResult.accessToken,
       refreshToken: electronResult.refreshToken,
+      expiresAt: electronResult.expiresIn ? Date.now() + electronResult.expiresIn * 1000 : Date.now() + 3500 * 1000,
       avatarUrl: electronResult.avatarUrl,
       messagesTotal: electronResult.messagesTotal,
       threadsTotal: electronResult.threadsTotal,
@@ -205,11 +211,15 @@ export async function signInWithGmailOAuth(
             const fallbackEmail = email || `gmail_${Date.now()}@gmail.com`
             const fallbackName = displayName || fallbackEmail.split('@')[0]
 
+            const expiresIn = response.expires_in
+            const expiresAt = expiresIn ? Date.now() + expiresIn * 1000 : Date.now() + 3500 * 1000
+
             // Register or update the account in DBB Mail's multi-account Gmail service
             const account = gmailService.addAccount({
               email: fallbackEmail,
               name: fallbackName,
               accessToken,
+              expiresAt,
               avatarUrl,
               messagesTotal: profileData.messagesTotal,
               threadsTotal: profileData.threadsTotal,

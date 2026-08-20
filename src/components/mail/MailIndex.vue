@@ -24,6 +24,8 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 
 const { isDark, toggleTheme } = useTheme()
 
+import type { MailFolder } from '@/types/mail'
+
 const {
   selectedMailbox,
   selectedProvider,
@@ -49,19 +51,21 @@ const handleCustomMailboxSelected = (e: Event) => {
     hostingerAccount: 'DMBB' | 'DBB'
     provider?: 'hostinger' | 'gmail'
     gmailAccountId?: string
+    folder?: MailFolder
   }>
   if (customEvent.detail) {
+    const targetFolder = customEvent.detail.folder
     if (customEvent.detail.provider === 'gmail') {
       const accId = customEvent.detail.resourceId || customEvent.detail.gmailAccountId || ''
       const existing = accId ? gmailService.getAccount(accId) : undefined
       if (existing) {
-        handleGmailAccountSelected(existing)
+        handleGmailAccountSelected(existing, targetFolder)
       } else {
         const matchingByEmail = gmailService.getAccounts().find(
           (a) => a.email.toLowerCase() === customEvent.detail.email.toLowerCase()
         )
         if (matchingByEmail) {
-          handleGmailAccountSelected(matchingByEmail)
+          handleGmailAccountSelected(matchingByEmail, targetFolder)
         } else {
           console.warn('[MailIndex] Gmail account not found for ID:', accId, customEvent.detail.email)
         }
@@ -70,18 +74,28 @@ const handleCustomMailboxSelected = (e: Event) => {
       handleMailboxSelected(
         customEvent.detail.email,
         customEvent.detail.resourceId,
-        customEvent.detail.hostingerAccount
+        customEvent.detail.hostingerAccount,
+        targetFolder
       )
     }
   }
 }
 
+const handleCustomFolderSelected = (e: Event) => {
+  const customEvent = e as CustomEvent<{ folder: MailFolder }>
+  if (customEvent.detail?.folder) {
+    handleFolderChange(customEvent.detail.folder)
+  }
+}
+
 onMounted(() => {
   window.addEventListener('mailbox-selected-event', handleCustomMailboxSelected)
+  window.addEventListener('folder-selected-event', handleCustomFolderSelected)
 })
 
 onUnmounted(() => {
   window.removeEventListener('mailbox-selected-event', handleCustomMailboxSelected)
+  window.removeEventListener('folder-selected-event', handleCustomFolderSelected)
 })
 </script>
 

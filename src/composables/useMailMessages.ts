@@ -168,7 +168,8 @@ export function useMailMessages() {
   async function handleMailboxSelected(
     email: string,
     mailboxResourceId: string,
-    hostingerAccount: HostingerAccount
+    hostingerAccount: HostingerAccount,
+    initialFolder?: MailFolder
   ) {
     selectedProvider.value = 'hostinger'
     selectedGmailAccountId.value = null
@@ -177,6 +178,9 @@ export function useMailMessages() {
     selectedHostingerAccount.value = hostingerAccount
     activeMessage.value = null
     pagination.value.page = 1
+    if (initialFolder) {
+      activeFolder.value = initialFolder
+    }
 
     await fetchMessages(
       mailboxResourceId,
@@ -186,7 +190,7 @@ export function useMailMessages() {
     )
   }
 
-  async function handleGmailAccountSelected(account: GmailAccount) {
+  async function handleGmailAccountSelected(account: GmailAccount, initialFolder?: MailFolder) {
     selectedProvider.value = 'gmail'
     selectedGmailAccountId.value = account.id
     selectedMailbox.value = account.email
@@ -194,6 +198,9 @@ export function useMailMessages() {
     selectedHostingerAccount.value = null
     activeMessage.value = null
     pagination.value.page = 1
+    if (initialFolder) {
+      activeFolder.value = initialFolder
+    }
 
     await fetchMessages(
       account.id,
@@ -209,6 +216,12 @@ export function useMailMessages() {
     activeFolder.value = folder
     activeMessage.value = null
     pagination.value.page = 1
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('folder-selected-event', { detail: { folder } })
+      )
+    }
 
     if (!selectedMailboxResourceId.value) return
 
